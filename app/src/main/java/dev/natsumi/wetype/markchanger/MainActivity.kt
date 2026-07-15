@@ -557,7 +557,7 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(8.dp))
                     Card {
                         BasicComponent(title = "模块名称", summary = "微信输入法上滑符号自定义")
-                        BasicComponent(title = "版本", summary = "1.0.0")
+                        BasicComponent(title = "版本", summary = "1.1")
                         BasicComponent(title = "作者", summary = "Rakurin Natsumi")
                         BasicComponent(
                             title = "GitHub",

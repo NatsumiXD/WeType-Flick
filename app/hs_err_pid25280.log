@@ -1,0 +1,261 @@
+#
+# There is insufficient memory for the Java Runtime Environment to continue.
+# Native memory allocation (mmap) failed to map 132120576 bytes. Error detail: G1 virtual space
+# Possible reasons:
+#   The system is out of physical RAM or swap space
+#   This process is running with CompressedOops enabled, and the Java Heap may be blocking the growth of the native heap
+# Possible solutions:
+#   Reduce memory load on the system
+#   Increase physical memory or swap space
+#   Check if swap backing store is full
+#   Decrease Java heap size (-Xmx/-Xms)
+#   Decrease number of Java threads
+#   Decrease Java thread stack sizes (-Xss)
+#   Set larger code cache with -XX:ReservedCodeCacheSize=
+#   JVM is running with Unscaled Compressed Oops mode in which the Java heap is
+#     placed in the first 4GB address space. The Java Heap base address is the
+#     maximum limit for the native heap growth. Please use -XX:HeapBaseMinAddress
+#     to set the Java Heap base and to place the Java Heap above 4GB virtual address.
+# This output file may be truncated or incomplete.
+#
+#  Out of Memory Error (os_windows.cpp:3926), pid=25280, tid=424
+#
+# JRE version:  (21.0.10) (build )
+# Java VM: OpenJDK 64-Bit Server VM (21.0.10+-14961533-b1163.108, mixed mode, sharing, tiered, compressed oops, compressed class ptrs, g1 gc, windows-amd64)
+# No core dump will be written. Minidumps are not enabled by default on client versions of Windows
+#
+
+---------------  S U M M A R Y ------------
+
+Command Line: -Djava.awt.headless=true -Djava.library.path=D:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Users\ά��\AppData\Roaming\npm;C:\Users\ά��\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\ά��\AppData\Local\Programs\Python\Python314\;C:\Users\ά��\AppData\Local\pnpm\bin;C:\Users\???\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python314\;C:\Users\???\AppData\Local\Programs\Python\Launcher\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Users\???\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python313\;C:\Users\???\AppData\Local\Microsoft\WindowsApps;C:\Users\???\AppData\Roaming\npm;C:\Users\???\.local\bin;D:\Users\???\AppData\Local\Programs\Microsoft VS Code\bin;D:\and\cmdline-tools\latest\bin;C:\Users\???\.local\bin;C:\Users\ά��\AppData\Roaming\npm;;.;D:\and\WeType-Flick\app\src\testDebug\jniLibs;D:\and\WeType-Flick\app\src\test\jniLibs -Dorg.gradle.internal.worker.tmpdir=D:\and\WeType-Flick\app\build\tmp\testDebugUnitTest\work --add-opens=java.base/java.io=ALL-UNNAMED -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant -ea worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 1'
+
+Host: Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz, 4 cores, 7G,  Windows 11 , 64 bit Build 26100 (10.0.26100.8521)
+Time: Thu Jul 16 02:23:59 2026 elapsed time: 0.815411 seconds (0d 0h 0m 0s)
+
+---------------  T H R E A D  ---------------
+
+Current thread (0x0000016e3830ba70):  JavaThread "Unknown thread" [_thread_in_vm, id=424, stack(0x0000004bc5d00000,0x0000004bc5e00000) (1024K)]
+
+Stack: [0x0000004bc5d00000,0x0000004bc5e00000]
+Native frames: (J=compiled Java code, j=interpreted, Vv=VM code, C=native code)
+V  [jvm.dll+0x6d78a9]
+V  [jvm.dll+0x8665b3]
+V  [jvm.dll+0x868bde]
+V  [jvm.dll+0x8692c3]
+V  [jvm.dll+0x280ee6]
+V  [jvm.dll+0x6d4165]
+V  [jvm.dll+0x6c77fa]
+V  [jvm.dll+0x358f4b]
+V  [jvm.dll+0x360bc6]
+V  [jvm.dll+0x3b2ea6]
+V  [jvm.dll+0x3b3178]
+V  [jvm.dll+0x32b65c]
+V  [jvm.dll+0x32c34b]
+V  [jvm.dll+0x82f449]
+V  [jvm.dll+0x3c0078]
+V  [jvm.dll+0x8185e8]
+V  [jvm.dll+0x45449e]
+V  [jvm.dll+0x455c01]
+C  [jli.dll+0x52ab]
+C  [ucrtbase.dll+0x2cd30]
+C  [KERNEL32.DLL+0x2e957]
+C  [ntdll.dll+0x87c1c]
+
+
+---------------  P R O C E S S  ---------------
+
+Threads class SMR info:
+_java_thread_list=0x00007fffb5f5b9c8, length=0, elements={
+}
+
+Java Threads: ( => current thread )
+Total: 0
+
+Other Threads:
+  0x0000016e38335cc0 WorkerThread "GC Thread#0"                     [id=7536, stack(0x0000004bc5e00000,0x0000004bc5f00000) (1024K)]
+  0x0000016e3833acb0 ConcurrentGCThread "G1 Main Marker"            [id=17612, stack(0x0000004bc5f00000,0x0000004bc6000000) (1024K)]
+  0x0000016e3833c600 WorkerThread "G1 Conc#0"                       [id=2468, stack(0x0000004bc6000000,0x0000004bc6100000) (1024K)]
+
+[error occurred during error reporting (printing all threads), id 0xc0000005, EXCEPTION_ACCESS_VIOLATION (0xc0000005) at pc=0x00007fffb574e637]
+VM state: not at safepoint (not fully initialized)
+
+VM Mutex/Monitor currently owned by a thread:  ([mutex/lock_event])
+[0x00007fffb5fc87d0] Heap_lock - owner thread: 0x0000016e3830ba70
+
+Heap address: 0x00000000e0000000, size: 512 MB, Compressed Oops mode: 32-bit
+
+CDS archive(s) mapped at: [0x0000000000000000-0x0000000000000000-0x0000000000000000), size 0, SharedBaseAddress: 0x0000000800000000, ArchiveRelocationMode: 1.
+Narrow klass base: 0x0000000000000000, Narrow klass shift: 0, Narrow klass range: 0x0
+
+GC Precious Log:
+ CardTable entry size: 512
+ Card Set container configuration: InlinePtr #cards 5 size 8 Array Of Cards #cards 12 size 40 Howl #buckets 4 coarsen threshold 1843 Howl Bitmap #cards 512 size 80 coarsen threshold 460 Card regions per heap region 1 cards per card region 2048
+
+Heap:
+ garbage-first heap   total 0K, used 0K [0x00000000e0000000, 0x0000000100000000)
+  region size 1024K, 0 young (0K), 0 survivors (0K)
+ Metaspace       used 0K, committed 0K, reserved 0K
+  class space    used 0K, committed 0K, reserved 0K
+
+Heap Regions: E=young(eden), S=young(survivor), O=old, HS=humongous(starts), HC=humongous(continues), CS=collection set, F=free, TAMS=top-at-mark-start, PB=parsable bottom
+
+Card table byte_map: [0x0000016e4a460000,0x0000016e4a560000] _byte_map_base: 0x0000016e49d60000
+
+Marking Bits: (CMBitMap*) 0x0000016e383363d0
+ Bits: [0x0000016e4a560000, 0x0000016e4ad60000)
+
+GC Heap History (0 events):
+No events
+
+Dll operation events (1 events):
+Event: 0.029 Loaded shared library D:\Program Files\Android\Android Studio\jbr\bin\java.dll
+
+Deoptimization events (0 events):
+No events
+
+Classes loaded (0 events):
+No events
+
+Classes unloaded (0 events):
+No events
+
+Classes redefined (0 events):
+No events
+
+Internal exceptions (0 events):
+No events
+
+ZGC Phase Switch (0 events):
+No events
+
+VM Operations (0 events):
+No events
+
+Memory protections (0 events):
+No events
+
+Nmethod flushes (0 events):
+No events
+
+Events (0 events):
+No events
+
+
+Dynamic libraries:
+0x00007ff6e2030000 - 0x00007ff6e203a000 	D:\Program Files\Android\Android Studio\jbr\bin\java.exe
+0x00007ff83b9a0000 - 0x00007ff83bc06000 	C:\WINDOWS\SYSTEM32\ntdll.dll
+0x00007ff83a050000 - 0x00007ff83a119000 	C:\WINDOWS\System32\KERNEL32.DLL
+0x00007ff838c30000 - 0x00007ff83902a000 	C:\WINDOWS\System32\KERNELBASE.dll
+0x00007ff8393e0000 - 0x00007ff83952c000 	C:\WINDOWS\System32\ucrtbase.dll
+0x00007ff8354b0000 - 0x00007ff8354c8000 	D:\Program Files\Android\Android Studio\jbr\bin\jli.dll
+0x00007ff83b2c0000 - 0x00007ff83b487000 	C:\WINDOWS\System32\USER32.dll
+0x00007ff8392f0000 - 0x00007ff839317000 	C:\WINDOWS\System32\win32u.dll
+0x00007ff83aa60000 - 0x00007ff83aa8b000 	C:\WINDOWS\System32\GDI32.dll
+0x00007ff8395e0000 - 0x00007ff83970b000 	C:\WINDOWS\System32\gdi32full.dll
+0x00007ff839030000 - 0x00007ff8390d3000 	C:\WINDOWS\System32\msvcp_win.dll
+0x00007ff835320000 - 0x00007ff83533b000 	D:\Program Files\Android\Android Studio\jbr\bin\VCRUNTIME140.dll
+0x00007ff802b90000 - 0x00007ff802e22000 	C:\WINDOWS\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.8521_none_3e08b75ce33403b3\COMCTL32.dll
+0x00007ff839b50000 - 0x00007ff839bf9000 	C:\WINDOWS\System32\msvcrt.dll
+0x00007ff839db0000 - 0x00007ff839de2000 	C:\WINDOWS\System32\IMM32.DLL
+0x00007ff835400000 - 0x00007ff83540c000 	D:\Program Files\Android\Android Studio\jbr\bin\vcruntime140_1.dll
+0x00007ff820d20000 - 0x00007ff820dad000 	D:\Program Files\Android\Android Studio\jbr\bin\msvcp140.dll
+0x00007fffb5410000 - 0x00007fffb60a6000 	D:\Program Files\Android\Android Studio\jbr\bin\server\jvm.dll
+0x00007ff839f90000 - 0x00007ff83a046000 	C:\WINDOWS\System32\ADVAPI32.dll
+0x00007ff839aa0000 - 0x00007ff839b4a000 	C:\WINDOWS\System32\sechost.dll
+0x00007ff83a1b0000 - 0x00007ff83a2c8000 	C:\WINDOWS\System32\RPCRT4.dll
+0x00007ff83b640000 - 0x00007ff83b6c0000 	C:\WINDOWS\System32\WS2_32.dll
+0x00007ff838a90000 - 0x00007ff838aee000 	C:\WINDOWS\SYSTEM32\POWRPROF.dll
+0x00007ff81b690000 - 0x00007ff81b6c6000 	C:\WINDOWS\SYSTEM32\WINMM.dll
+0x00007ff82f680000 - 0x00007ff82f68b000 	C:\WINDOWS\SYSTEM32\VERSION.dll
+0x00007ff838a70000 - 0x00007ff838a84000 	C:\WINDOWS\SYSTEM32\UMPDC.dll
+0x00007ff8379a0000 - 0x00007ff8379bb000 	C:\WINDOWS\SYSTEM32\kernel.appcore.dll
+0x00007ff833d80000 - 0x00007ff833d8a000 	D:\Program Files\Android\Android Studio\jbr\bin\jimage.dll
+0x00007ff824050000 - 0x00007ff824292000 	C:\WINDOWS\SYSTEM32\DBGHELP.DLL
+0x00007ff839710000 - 0x00007ff839a93000 	C:\WINDOWS\System32\combase.dll
+0x00007ff83b1e0000 - 0x00007ff83b2b9000 	C:\WINDOWS\System32\OLEAUT32.dll
+0x00007ff81b420000 - 0x00007ff81b45b000 	C:\WINDOWS\SYSTEM32\dbgcore.DLL
+0x00007ff839530000 - 0x00007ff8395d8000 	C:\WINDOWS\System32\bcryptPrimitives.dll
+0x00007ff833c10000 - 0x00007ff833c30000 	D:\Program Files\Android\Android Studio\jbr\bin\java.dll
+
+JVMTI agents: none
+
+dbghelp: loaded successfully - version: 4.0.5 - missing functions: none
+symbol engine: initialized successfully - sym options: 0x614 - pdb path: .;D:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\SYSTEM32;C:\WINDOWS\WinSxS\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.26100.8521_none_3e08b75ce33403b3;D:\Program Files\Android\Android Studio\jbr\bin\server
+
+VM Arguments:
+jvm_args: -Djava.awt.headless=true -Djava.library.path=D:\Program Files\Android\Android Studio\jbr\bin;C:\WINDOWS\Sun\Java\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Users\ά��\AppData\Roaming\npm;C:\Users\ά��\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\ά��\AppData\Local\Programs\Python\Python314\;C:\Users\ά��\AppData\Local\pnpm\bin;C:\Users\???\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python314\;C:\Users\???\AppData\Local\Programs\Python\Launcher\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Users\???\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python313\;C:\Users\???\AppData\Local\Microsoft\WindowsApps;C:\Users\???\AppData\Roaming\npm;C:\Users\???\.local\bin;D:\Users\???\AppData\Local\Programs\Microsoft VS Code\bin;D:\and\cmdline-tools\latest\bin;C:\Users\???\.local\bin;C:\Users\ά��\AppData\Roaming\npm;;.;D:\and\WeType-Flick\app\src\testDebug\jniLibs;D:\and\WeType-Flick\app\src\test\jniLibs -Dorg.gradle.internal.worker.tmpdir=D:\and\WeType-Flick\app\build\tmp\testDebugUnitTest\work --add-opens=java.base/java.io=ALL-UNNAMED -Xmx512m -Dfile.encoding=UTF-8 -Duser.country=CN -Duser.language=zh -Duser.variant -ea 
+java_command: worker.org.gradle.process.internal.worker.GradleWorkerMain 'Gradle Test Executor 1'
+java_class_path (initial): C:\\Users\\维格\\.gradle\\caches\\9.4.1\\workerMain\\gradle-worker.jar;D:\\and\\WeType-Flick\\app\\build\\intermediates\\built_in_kotlinc\\debugUnitTest\\compileDebugUnitTestKotlin\\classes;D:\\and\\WeType-Flick\\app\\build\\intermediates\\java_res\\debugUnitTest\\processDebugUnitTestJavaRes\\out;D:\\and\\WeType-Flick\\app\\build\\intermediates\\runtime_app_classes_jar\\debug\\bundleDebugClassesToRuntimeJar\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\junit\\junit\\4.13.2\\8ac9e16d933b6fb43bc7f576336b8f4d7eb5ba12\\junit-4.13.2.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\24d6d981c79ba48fc20fb2a27cf31c5c\\transformed\\material-1.10.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9364d1fdd64ec944475bf5facf54e230\\transformed\\appcompat-resources-1.6.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\3eabdeabb972edc583291f1393616046\\transformed\\constraintlayout-2.0.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\3b58cc945b7bfb46347005d596575102\\transformed\\appcompat-1.6.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\dc29fa3c871276a61e8382b1a53329b8\\transformed\\viewpager2-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\75febca7be4eb1221564075983b64209\\transformed\\fragment-1.3.6-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1ce3d5aee26dcff8c122c46c762c31f3\\transformed\\miuix-preference-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1a2a7041c0995c671acf24d28d2d1458\\transformed\\miuix-ui-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\5f5bd634b228490918c25f49ff7768f3\\transformed\\miuix-core-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e522f92a64fa45cf0720a63ae7c045e6\\transformed\\miuix-squircle-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9da4f60278d1cfd21f02c64f01b5705e\\transformed\\miuix-shader-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7b7750918d1c4b5d6d587cc787a8eeaa\\transformed\\material3-window-size-class-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\58a742b66b72c631a9485b70f10a7a9d\\transformed\\ui-tooling-data-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\b748f76f4513731403e8650ae2e91979\\transformed\\ui-tooling-preview-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\197ad11660a9c2ab673273cff2cf2708\\transformed\\ui-unit-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\53098acf4f9d810fd25735b4d7a29c5b\\transformed\\ui-graphics-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\542d09ae4308c18f7a56ab1ee40b4b9c\\transformed\\ui-geometry-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\73e8dd6eded8433953b8872092046f7c\\transformed\\material-ripple-release-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\341ee5bf3365129703c4c5b5d16f62fe\\transformed\\ui-util-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\64b1bb3aa2fdf90acd2684d5df49eeab\\transformed\\ui-text-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\0b829cb3aa1b109bcfa9472504ae666a\\transformed\\ui-tooling-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6417737f02de275b9247aea6c705c9fb\\transformed\\material3-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\bdbaca88d4a95dfa1ad67d88684fb714\\transformed\\animation-core-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\ea1d7c6b13cd16656147fd1c35344555\\transformed\\animation-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\addd4c7450ab299fba9238c676f15a63\\transformed\\foundation-layout-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\42a02421ee7dde4b683277abcd7505cd\\transformed\\foundation-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\482ee7c171a748d416693c36e34abb36\\transformed\\navigationevent-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\ac8e516a384241570eef19c62bb5a33b\\transformed\\navigationevent-compose-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\950325038ccad65ada412eea229d4add\\transformed\\ui-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\22bb5064d38e2e9b029f8def165b75f4\\transformed\\activity-ktx-1.10.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f31be90c4e4b845098d3cd20fb290610\\transformed\\activity-1.10.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\217938a41f9a69c158eac96190f86b69\\transformed\\activity-compose-1.10.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6d930569e835762f4e34daabd9243834\\transformed\\runtime-annotation-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\545c5b3b68560842d41d4f0671d32e3a\\transformed\\runtime-retain-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2ee46540e9cf5c73033c303ab9464e7d\\transformed\\transition-1.6.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7dc71aab3797fb501832bc4ce92ce2e1\\transformed\\dynamicanimation-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9c68d1ba5302495e4006a807350a5d52\\transformed\\legacy-support-core-utils-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\159bb24fd500854827624eb6fc49c864\\transformed\\loader-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e0d798d08138ab08a4ea4abc70b6feaf\\transformed\\drawerlayout-1.1.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\679405b70b8bce8a0d9bdfd9c7953124\\transformed\\coordinatorlayout-1.1.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\af99c1514146328b126d0dd0bd3c0ab9\\transformed\\vectordrawable-animated-1.1.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\ebc01570f0c00c7b60c1507d176b2816\\transformed\\vectordrawable-1.1.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\3dee051e59f7c5845cc78e1f5072e96e\\transformed\\viewpager-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\fefaa99bd524f7b4f1321067fabcf33d\\transformed\\recyclerview-1.1.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6ad115821df4f8ad7a3ee324aabd99c7\\transformed\\customview-1.1.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2e1b875e02679ee395862e10de3db14a\\transformed\\window-core-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\05179caade0f253bd718733b7ddc88ed\\transformed\\window-1.5.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\54686c0adbbd86e7349195dfdc76772d\\transformed\\autofill-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7bfda5411ed084dafdc843b696cb0ed5\\transformed\\emoji2-views-helper-1.4.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7d9c4ca2e856ece32833f5b6a6e6a4c6\\transformed\\emoji2-1.4.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f0ff60d2e158f3bc37cbe944e224000a\\transformed\\graphics-path-1.0.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\34d91e7327033da59f798fad4fef04b2\\transformed\\customview-poolingcontainer-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a0a2639ae7cefdb71b166cc3cd845bab\\transformed\\core-ktx-1.16.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\859303d5eed3c66f6764093b1a9e7e2d\\transformed\\core-1.16.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.lifecycle\\lifecycle-common-java8\\2.9.4\\86a8e6b9d0ba0c964fdc7223a38b6ce74bcb24dd\\lifecycle-common-java8-2.9.4.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1bc83a5bf9c4755730d5e5fa10ce3612\\transformed\\lifecycle-runtime-ktx-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2262219efe7b9c3c18edf5ace6c8fd30\\transformed\\lifecycle-process-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\45abfcf6dac62a6fc4e064c4fc4790fd\\transformed\\lifecycle-runtime-release-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.lifecycle\\lifecycle-common-jvm\\2.9.4\\ab739bccdb3541983385af169565c7c035d897e7\\lifecycle-common-jvm-2.9.4.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6fd8b7784dce160cfb8d3b26dbc2a6d4\\transformed\\lifecycle-viewmodel-ktx-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2641dfdc173f0ad0b57c84fc0039c86c\\transformed\\lifecycle-livedata-core-ktx-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e9f03c952c8cca43850c227c36783458\\transformed\\lifecycle-livedata-core-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f85d01dd24e67225a7aaaf78899a8a9a\\transformed\\lifecycle-livedata-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\207401d503ad23eaffe074e076c7d2dc\\transformed\\lifecycle-viewmodel-2.9.4-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\b51e81eeaccef5196dbbbc21128f2b99\\transformed\\lifecycle-viewmodel-release-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e2ef87c0b4a0b85e535a73787f29493f\\transformed\\lifecycle-runtime-compose-release-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6674276521f88c3e0c9623a0070ddb67\\transformed\\lifecycle-viewmodel-savedstate-release-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6e1e7a122a46fea5ef7b37a1f2bd2cb0\\transformed\\savedstate-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1ce8180255c3113ca845f40bac97b488\\transformed\\savedstate-ktx-1.4.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\b0b5ca2f8752c6915115802bb8f7071d\\transformed\\savedstate-compose-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\cf3f7f88f9bd56354c1e697cb82b59fc\\transformed\\runtime-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\04e9e7f75735bc7f70f4dbcc5edd34e9\\transformed\\runtime-saveable-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\97e03a85b3a446c30f59e9abceee7b8e\\transformed\\material-color-utilities-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.collection\\collection-ktx\\1.5.0\\27c78a926a16a1bf792b2285cf2834e8caae4a07\\collection-ktx-1.5.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\0a65b50445d81cfc24711adb9019e7c1\\transformed\\versionedparcelable-1.1.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.collection\\collection-jvm\\1.5.0\\7ba2c69414d46ebc2dd76598bdd0a75c54281a57\\collection-jvm-1.5.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2f8d92d73489ab2e2ff59eb001b5081f\\transformed\\cursoradapter-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.resourceinspection\\resourceinspection-annotation\\1.0.1\\8c21f8ff5d96d5d52c948707f7e4d6ca6773feef\\resourceinspection-annotation-1.0.1.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\42f8a828ad6f512fa4b7d2a4c52845fb\\transformed\\cardview-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\719082caa3c0e7a2336b5d0af1d707ff\\transformed\\profileinstaller-1.4.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a4c6b9a6ada2c7242bbf9040a7739f56\\transformed\\interpolator-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f5186adadd031e097980cfa346ac86ff\\transformed\\documentfile-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7c5a91624135cd240ed52b72f9872275\\transformed\\localbroadcastmanager-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2fc0f03db1b4adb96deff8d57fd4eefe\\transformed\\print-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9c87b284a88c7298c4dca5d6df4dd4c2\\transformed\\startup-runtime-1.1.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.concurrent\\concurrent-futures\\1.1.0\\50b7fb98350d5f42a4e49704b03278542293ba48\\concurrent-futures-1.1.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6eb3934b7f1767ffb413034afb1a2985\\transformed\\tracing-1.2.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8361f38ddc86158102083335ef27b967\\transformed\\core-runtime-2.2.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.arch.core\\core-common\\2.2.0\\5e1b8b81dfd5f52c56a8d53b18ca759c19a301f3\\core-common-2.2.0.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.annotation\\annotation-jvm\\1.9.1\\b17951747e38bf3986a24431b9ba0d039958aa5f\\annotation-jvm-1.9.1.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-android\\1.9.0\\6cf3b8df5a2ce8c6b0dffe55657a827c405ee2fe\\kotlinx-coroutines-android-1.9.0.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-coroutines-core-jvm\\1.9.0\\9beade4c1c1569e4f36cbd2c37e02e3e41502601\\kotlinx-coroutines-core-jvm-1.9.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\848816ece93fea8960e22f4025a11ec0\\transformed\\annotation-experimental-1.4.1-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\dev.drewhamilton.poko\\poko-annotations-jvm\\0.21.1\\1e98d2ec00742104bd01eaebbd59582dac99a62\\poko-annotations-jvm-0.21.1.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\0332afeb0a114abe376a07b545337748\\transformed\\core-viewtree-1.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlinx\\kotlinx-serialization-core-jvm\\1.7.3\\1f226780b845ff9206474c05159245d861556249\\kotlinx-serialization-core-jvm-1.7.3.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains.kotlin\\kotlin-stdlib\\2.4.0\\4e9f4b531dce5c7dee58ed2de9a8b9a763c8dc6c\\kotlin-stdlib-2.4.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8fc09ff707c92a71800b423fe81f8bed\\transformed\\service-102.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.hamcrest\\hamcrest-core\\1.3\\42a25dc3219429f0e5d060061f71acb49bf010a0\\hamcrest-core-1.3.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jetbrains\\annotations\\23.0.0\\8cc20c07506ec18e0834947b84a864bfc094484e\\annotations-23.0.0.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\com.google.errorprone\\error_prone_annotations\\2.15.0\\38c8485a652f808c8c149150da4e5c2b0bd17f9a\\error_prone_annotations-2.15.0.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9ae96b8eb07388061a74b11dff4b964f\\transformed\\interface-102.0.0-runtime.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\androidx.constraintlayout\\constraintlayout-solver\\2.0.1\\30988fe2d77f3fe3bf7551bb8a8b795fad7e7226\\constraintlayout-solver-2.0.1.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\com.google.guava\\listenablefuture\\1.0\\c949a840a6acbc5268d088e47b04177bf90b3cad\\listenablefuture-1.0.jar;C:\\Users\\维格\\.gradle\\caches\\modules-2\\files-2.1\\org.jspecify\\jspecify\\1.0.0\\7425a601c1c7ec76645a78d22b8c6a627edee507\\jspecify-1.0.0.jar;D:\\and\\WeType-Flick\\app\\build\\intermediates\\java_res\\debug\\processDebugJavaRes\\out;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8bd5da0183b94ef5b0de1acccb030f9f\\transformed\\material-1.10.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\5773696641de23b528ed4e96b17fb03c\\transformed\\appcompat-resources-1.6.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9134cf8529c0d121a01c4f29521ff9bc\\transformed\\constraintlayout-2.0.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\3a3522b791262f0a77fc6bf134e48001\\transformed\\appcompat-1.6.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\4320a4421155061a6ae4f968e6cbadd2\\transformed\\viewpager2-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\79781645193b105b354a2fc683271715\\transformed\\fragment-1.3.6\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\69e03a4c1c84b50b9532492489ae1004\\transformed\\miuix-preference\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\544a052bfbc0eb2edced8fe0eb440a86\\transformed\\miuix-ui\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\72ef93ee55c8a36bc8fd713acce7e79a\\transformed\\miuix-core\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\bb2060a5d0ac7d943acf60a6e3ad802b\\transformed\\miuix-squircle\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a64b866130de4bb2e0c1c76d476670d1\\transformed\\miuix-shader\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\61dbb4a392d51da3164b7168849b26d7\\transformed\\material3-window-size-class\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9b2f0ddfb9bae482c26aec87e98b4d93\\transformed\\ui-tooling-data\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1ef83f806d73c0aa524be54720a4fc53\\transformed\\ui-tooling-preview\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\07ae3c1230a6f74f54a414535c221437\\transformed\\ui-unit\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6b9d660ccd447610d7774d8c6f668999\\transformed\\ui-graphics\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\bab727470299be7834ae28493581e5ed\\transformed\\ui-geometry\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\989334e4a864725a1c08d3777a1e5429\\transformed\\material-ripple-release\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2fbf63c3e95d279277e31dbb09c7145d\\transformed\\ui-util\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\3074252f314c5c006c6b060892b2c214\\transformed\\ui-text\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\b3321b9ea3a52dff9c1b001ec578e881\\transformed\\ui-tooling\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2a8d1d253a51f07bde7f0788c31f86f4\\transformed\\material3\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e9f85666b758916611e7a4b56f143f3e\\transformed\\animation-core\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\996710aad62e42a72693cd648afeaa12\\transformed\\animation\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\c4ae7a1ce934f8b420fbb3f7a3a08261\\transformed\\foundation-layout\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\4052df7fdc1129f445998e043eb709cc\\transformed\\foundation\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\0e97ce89891535bfad94a72505f7857a\\transformed\\navigationevent\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\422a59dc449fb6add9b8d1f76cbd6d7a\\transformed\\navigationevent-compose\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\897be5c50c1ccca9920a3c3ea96ee2b5\\transformed\\ui\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a17f42eafb4368c1640f14a09f922323\\transformed\\activity-ktx-1.10.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\579b9b3e3b720389e3d113727c27232a\\transformed\\activity-1.10.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8fc5ec496bdc61f9b52f9abdea242aa8\\transformed\\activity-compose-1.10.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\eef1c96c7c3cc81455bdd310f24397d4\\transformed\\runtime-annotation\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f7b017c99bd97d73f599947bb862d85d\\transformed\\runtime-retain\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2a4e9dc902af39e8639cbec79a041763\\transformed\\transition-1.6.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f86c4c7e88838fd493468b3c85e3aa87\\transformed\\dynamicanimation-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\47be1db6822ac4c23d0876a1da06131c\\transformed\\legacy-support-core-utils-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\10a5afb4d55f70cdace7d603f1db5f68\\transformed\\loader-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\5be3d61f8625fff9bfab892d77d8d884\\transformed\\drawerlayout-1.1.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\9f3f47523bae53c03bfb49c469e936f8\\transformed\\coordinatorlayout-1.1.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\c23fb65613ecb0e8dd3853efb2eec738\\transformed\\vectordrawable-animated-1.1.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\bfe2444c56f3c1bcb8ecb23021f5ec39\\transformed\\vectordrawable-1.1.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7909776e13ceb6da082a9ab91b2a2d05\\transformed\\viewpager-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\284453eb8b308cd728f67ca00e7b9454\\transformed\\recyclerview-1.1.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\41eb9318b39e8af99900f7fb1350257e\\transformed\\customview-1.1.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\ec31ba1d623b161a76981ab6c33264ae\\transformed\\window-core\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8a51ed917599260d2863eff3c33c50b8\\transformed\\window-1.5.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\963adb3a28ef03f39690fb8c9e081464\\transformed\\autofill-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\64289c5f90523f3e0527a4080c82aa38\\transformed\\emoji2-views-helper-1.4.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\32cbc548cf5c8659c623e6cc494137c8\\transformed\\emoji2-1.4.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\32cbc548cf5c8659c623e6cc494137c8\\transformed\\emoji2-1.4.0\\jars\\libs\\repackaged.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\38896cac9da7b4ad81f8accf6c6d2b58\\transformed\\graphics-path-1.0.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\54d42140d28de425dd5690fb457a8bcc\\transformed\\customview-poolingcontainer-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8ece22c54016ae88884386db52cd1971\\transformed\\core-ktx-1.16.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a12b075d2e4942dbfc1e8b524dadcde2\\transformed\\core-1.16.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\5644ccbeb0781fe7a3b3d991e75d6927\\transformed\\lifecycle-runtime-ktx\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\16c634bfa816597da25cffac87661c49\\transformed\\lifecycle-process-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a9caba491fda262b1803d4940679526b\\transformed\\lifecycle-runtime-release\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\4532d0324bbff627591e261ccd906e90\\transformed\\lifecycle-viewmodel-ktx-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\483f98529815e0a4f7fbae5ac59e6591\\transformed\\lifecycle-livedata-core-ktx-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\dffb4072aa1cc10881cca2254d137eb1\\transformed\\lifecycle-livedata-core-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\46307fe1e92f3cc6ea66c123d2875515\\transformed\\lifecycle-livedata-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1407bf75ed0cda00fbbe0725978161e5\\transformed\\lifecycle-viewmodel-2.9.4\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\969665b8a2be7d7e8efb2e6f8ddcd622\\transformed\\lifecycle-viewmodel-release\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\d4a2d15d34a04419bac0c4830cc74e0f\\transformed\\lifecycle-runtime-compose-release\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\070f67e5a278d749f818aebb7d31904c\\transformed\\lifecycle-viewmodel-savedstate-release\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\587e2e537062abe8b7a5c2e5a5d92954\\transformed\\savedstate\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\89f8f0dded9870a2d154b660659bedd0\\transformed\\savedstate-ktx-1.4.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1636e800cb9be6db153a4cff9377047e\\transformed\\savedstate-compose\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1ac28b0a2b2eb4d21359a3e22a53336f\\transformed\\runtime\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\e7675c78b8b2d3d8704efe29e9021ac7\\transformed\\runtime-saveable\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7e302b4ac23a21177be6f5231ac836fc\\transformed\\material-color-utilities\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6376f67ecf6feeb0e11333c34cfc7d9a\\transformed\\versionedparcelable-1.1.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a687ce04cf5505c9fcbd64ad4457a6eb\\transformed\\cursoradapter-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\944e467cb01f3a9276de2d9354c5b214\\transformed\\cardview-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\1d41de64df4095f7a4d3415d6a6f247b\\transformed\\profileinstaller-1.4.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\4137e249c7bcb212082e49f77da87be2\\transformed\\interpolator-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\6085c8cad3050993072ac841b97ceab9\\transformed\\documentfile-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\4fdb821bcf23de94ba0405b51cbdf5ff\\transformed\\localbroadcastmanager-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a5da07b07c6dae61bd313e073aafe57c\\transformed\\print-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\2b6d482944da7e283bb63d6785db3cbd\\transformed\\startup-runtime-1.1.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\8ba88bc6bf13045d3c9d5b4beba2237f\\transformed\\tracing-1.2.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\a3bc9c5d701010801fe62666a0dda1c7\\transformed\\core-runtime-2.2.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\d9f3d490d3848dd990214ec7dbceef4e\\transformed\\annotation-experimental-1.4.1\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\26f2c7d127f483c527a19196bbc67c6c\\transformed\\core-viewtree-1.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\f44abe3579abb74c014d5fbf613aaae0\\transformed\\service-102.0.0\\jars\\classes.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\7bd543d951d1ebc1deaadc312aba750a\\transformed\\interface-102.0.0\\jars\\classes.jar;D:\\and\\WeType-Flick\\app\\build\\intermediates\\compile_and_runtime_r_class_jar\\debug\\processDebugResources\\R.jar;C:\\Users\\维格\\.gradle\\caches\\9.4.1\\transforms\\510346c76ee0120ba482d1165f054c9e\\transformed\\android.jar
+Launcher Type: SUN_STANDARD
+
+[Global flags]
+     intx CICompilerCount                          = 3                                         {product} {ergonomic}
+     uint ConcGCThreads                            = 1                                         {product} {ergonomic}
+     uint G1ConcRefinementThreads                  = 4                                         {product} {ergonomic}
+   size_t G1HeapRegionSize                         = 1048576                                   {product} {ergonomic}
+    uintx GCDrainStackTargetSize                   = 64                                        {product} {ergonomic}
+   size_t InitialHeapSize                          = 132120576                                 {product} {ergonomic}
+   size_t MarkStackSize                            = 4194304                                   {product} {ergonomic}
+   size_t MaxHeapSize                              = 536870912                                 {product} {command line}
+   size_t MinHeapDeltaBytes                        = 1048576                                   {product} {ergonomic}
+   size_t MinHeapSize                              = 8388608                                   {product} {ergonomic}
+    uintx NonNMethodCodeHeapSize                   = 5832780                                {pd product} {ergonomic}
+    uintx NonProfiledCodeHeapSize                  = 122912730                              {pd product} {ergonomic}
+    uintx ProfiledCodeHeapSize                     = 122912730                              {pd product} {ergonomic}
+    uintx ReservedCodeCacheSize                    = 251658240                              {pd product} {ergonomic}
+     bool SegmentedCodeCache                       = true                                      {product} {ergonomic}
+   size_t SoftMaxHeapSize                          = 536870912                              {manageable} {ergonomic}
+     bool UseCompressedOops                        = true                           {product lp64_product} {ergonomic}
+     bool UseG1GC                                  = true                                      {product} {ergonomic}
+     bool UseLargePagesIndividualAllocation        = false                                  {pd product} {ergonomic}
+
+Logging:
+Log output configuration:
+ #0: stdout all=warning uptime,level,tags foldmultilines=false
+ #1: stderr all=off uptime,level,tags foldmultilines=false
+
+Release file:
+<release file has not been read>
+Environment Variables:
+PATH=C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot\bin;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Program Files\Git\cmd;C:\Users\ά��\AppData\Roaming\npm;C:\Users\ά��\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\ά��\AppData\Local\Programs\Python\Python314\;C:\Users\ά��\AppData\Local\pnpm\bin;C:\Users\???\AppData\Local\Programs\Python\Python314\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python314\;C:\Users\???\AppData\Local\Programs\Python\Launcher\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\nodejs\;C:\Users\???\AppData\Local\Programs\Python\Python313\Scripts\;C:\Users\???\AppData\Local\Programs\Python\Python313\;C:\Users\???\AppData\Local\Microsoft\WindowsApps;C:\Users\???\AppData\Roaming\npm;C:\Users\???\.local\bin;D:\Users\???\AppData\Local\Programs\Microsoft VS Code\bin;D:\and\cmdline-tools\latest\bin;C:\Users\???\.local\bin;C:\Users\ά��\AppData\Roaming\npm;
+USERNAME=ά��
+OS=Windows_NT
+PROCESSOR_IDENTIFIER=Intel64 Family 6 Model 142 Stepping 12, GenuineIntel
+TMP=C:\Users\ά��\AppData\Local\Temp
+TEMP=C:\Users\ά��\AppData\Local\Temp
+
+
+
+
+Periodic native trim disabled
+
+JNI global refs:
+JNI global refs: 0, weak refs: 0
+
+JNI global refs memory usage: 0, weak refs: 0
+
+Process memory usage:
+Resident Set Size: 13276K (0% of 8218416K total physical memory with 316652K free physical memory)
+
+OOME stack traces (most recent first):
+Classloader memory used:
+
+---------------  S Y S T E M  ---------------
+
+OS:
+ Windows 11 , 64 bit Build 26100 (10.0.26100.8521)
+OS uptime: 4 days 11:04 hours
+Hyper-V role detected
+
+CPU: total 4 (initial active 4) (2 cores per cpu, 2 threads per core) family 6 model 142 stepping 12 microcode 0xde, cx8, cmov, fxsr, ht, mmx, 3dnowpref, sse, sse2, sse3, ssse3, sse4.1, sse4.2, popcnt, lzcnt, tsc, tscinvbit, avx, avx2, aes, erms, clmul, bmi1, bmi2, adx, fma, vzeroupper, clflush, clflushopt, hv, rdtscp, f16c
+Processor Information for the first 4 processors :
+  Max Mhz: 2592, Current Mhz: 2592, Mhz Limit: 2073
+
+Memory: 4k page, system-wide physical 8025M (309M free)
+TotalPageFile size 23385M (AvailPageFile size 127M)
+current process WorkingSet (physical memory assigned to process): 12M, peak: 12M
+current process commit charge ("private bytes"): 51M, peak: 177M
+
+vm_info: OpenJDK 64-Bit Server VM (21.0.10+-14961533-b1163.108) for windows-amd64 JRE (21.0.10+-14961533-b1163.108), built on 2026-03-02T19:58:50Z by "builder" with MS VC++ 16.10 / 16.11 (VS2019)
+
+END.
