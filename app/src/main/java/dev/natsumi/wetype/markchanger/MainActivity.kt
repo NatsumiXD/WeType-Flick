@@ -1,4 +1,4 @@
-package dev.natsumi.wetype.markchanger
+﻿package dev.natsumi.wetype.markchanger
 
 import android.content.Intent
 import android.os.Bundle
@@ -158,425 +158,461 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            // 框架状态
-            item {
-                SmallTitle(text = "框架状态")
-                Card {
-                    val service = XposedServiceManager.service
-                    if (service != null) {
-                        BasicComponent(title = "框架名称", summary = service.getFrameworkName())
-                        BasicComponent(title = "框架版本", summary = "${service.getFrameworkVersion()} (${service.getFrameworkVersionCode()})")
-                        BasicComponent(title = "API 版本", summary = service.getApiVersion().toString())
-                        BasicComponent(title = "作用域", summary = service.getScope().joinToString(", "))
-                    } else {
-                        BasicComponent(title = "未连接", summary = "请确保 LSPosed 已启用本模块")
-                    }
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-
-            // 键盘切换
-            item {
-                TabRow(
-                    tabs = KEYBOARD_LABELS,
-                    selectedTabIndex = selectedTab,
-                    onTabSelected = { selectedTab = it }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // 仅同步上滑模式开关chachan
-            item {
-                Card {
-                    BasicComponent(
-                        title = "仅同步上滑符号",
-                        summary = if (syncSwipeOnly) "已开启 — 长按符号不修改" else "关闭 — 可自定义长按符号",
-                        onClick = {
-                            syncSwipeOnly = !syncSwipeOnly
-                            SymbolConfig.setSyncSwipeOnly(context, syncSwipeOnly)
-                            if (syncSwipeOnly) selectedMode = 0
-                        }
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // 符号模式切换（仅同步上滑模式下隐藏）
-            if (!syncSwipeOnly) {
+            LazyColumn(
+                modifier = Modifier.weight(1f)
+            ) {
+                // 框架状态
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val modeLabels = listOf("上滑符号", "长按符号")
-                        modeLabels.forEachIndexed { index, label ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        if (selectedMode == index) MiuixTheme.colorScheme.primary
-                                        else MiuixTheme.colorScheme.surface
-                                    )
-                                    .clickable { selectedMode = index }
-                                    .padding(vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = label,
-                                    color = if (selectedMode == index) MiuixTheme.colorScheme.onPrimary
-                                    else MiuixTheme.colorScheme.onSurface,
-                                    fontSize = 13.sp
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-            }
-
-            // 符号键盘
-            item {
-                if (selectedMode == 0) {
-                    SmallTitle(text = "上滑符号自定义")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    QwertyKeyboard(
-                        symbols = symbols,
-                        defaults = defaults,
-                        onKeyClick = { key ->
-                            editingKey = key
-                            editingValue = symbols[key] ?: ""
-                            editingMode = 0
-                        }
-                    )
-                } else {
-                    SmallTitle(text = "长按符号自定义")
-                    Spacer(modifier = Modifier.height(8.dp))
-                    QwertyKeyboard(
-                        symbols = longPressSymbols,
-                        defaults = longPressDefaults,
-                        onKeyClick = { key ->
-                            editingKey = key
-                            editingValue = longPressSymbols[key] ?: longPressDefaults[key] ?: ""
-                            editingMode = 1
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "逗号分隔多个符号，如: A,a,ā,á,ǎ,à",
-                        fontSize = 12.sp,
-                        color = MiuixTheme.colorScheme.onSurface
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 保存 / 恢复
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ActionButton("保存", MiuixTheme.colorScheme.primary, MiuixTheme.colorScheme.onPrimary) {
-                        if (selectedMode == 0) {
-                            for (letter in SymbolConfig.LETTERS) {
-                                val key = letter.toString()
-                                val v = symbols[key] ?: ""
-                                if (v.isNotEmpty()) SymbolConfig.setSymbol(context, keyboardType, key, v)
-                                else SymbolConfig.removeSymbol(context, keyboardType, key)
-                            }
+                    SmallTitle(text = "框架状态")
+                    Card {
+                        val service = XposedServiceManager.service
+                        if (service != null) {
+                            BasicComponent(title = "框架名称", summary = service.getFrameworkName())
+                            BasicComponent(title = "框架版本", summary = "${service.getFrameworkVersion()} (${service.getFrameworkVersionCode()})")
+                            BasicComponent(title = "API 版本", summary = service.getApiVersion().toString())
+                            BasicComponent(title = "作用域", summary = service.getScope().joinToString(", "))
                         } else {
-                            for (letter in SymbolConfig.LETTERS) {
-                                val key = letter.toString()
-                                val v = longPressSymbols[key] ?: ""
-                                if (v.isNotEmpty()) SymbolConfig.setLongPressSymbols(context, keyboardType, key, v)
-                                else SymbolConfig.removeLongPressSymbols(context, keyboardType, key)
-                            }
+                            BasicComponent(title = "未连接", summary = "请确保 LSPosed 已启用本模块")
                         }
-                        Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
                     }
-                    ActionButton("恢复默认", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
-                        if (selectedMode == 0) {
-                            SymbolConfig.resetKeyboard(context, keyboardType)
-                            symbols.clear()
-                        } else {
-                            SymbolConfig.resetLongPressKeyboard(context, keyboardType)
-                            longPressSymbols.clear()
-                        }
-                        Toast.makeText(context, "已恢复默认", Toast.LENGTH_SHORT).show()
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = if (selectedMode == 0) "灰色为默认符号，蓝色为已自定义\n中英文键盘符号独立配置"
-                    else "灰色为默认符号，蓝色为已自定义\n逗号分隔多个符号",
-                    fontSize = 12.sp,
-                    color = MiuixTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 预设方案
-            item {
-                SmallTitle(text = "预设方案")
-                Spacer(modifier = Modifier.height(8.dp))
-                Card {
-                    SymbolConfig.PRESETS.forEach { preset ->
+    
+                // 键盘切换
+                item {
+                    TabRow(
+                        tabs = KEYBOARD_LABELS,
+                        selectedTabIndex = selectedTab,
+                        onTabSelected = { selectedTab = it }
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+    
+                // 仅同步上滑模式开关chachan
+                item {
+                    Card {
                         BasicComponent(
-                            title = preset.name,
-                            summary = "点击应用此预设",
+                            title = "仅同步上滑符号",
+                            summary = if (syncSwipeOnly) "已开启 — 长按符号不修改" else "关闭 — 可自定义长按符号",
                             onClick = {
-                                SymbolConfig.applyPreset(context, preset)
-                                symbols.clear()
-                                longPressSymbols.clear()
-                                SymbolConfig.getAll(context, keyboardType).forEach { (k, v) -> symbols[k] = v }
-                                SymbolConfig.getAllLongPress(context, keyboardType).forEach { (k, v) -> longPressSymbols[k] = v }
-                                Toast.makeText(context, "已应用「${preset.name}」预设", Toast.LENGTH_SHORT).show()
+                                syncSwipeOnly = !syncSwipeOnly
+                                SymbolConfig.setSyncSwipeOnly(context, syncSwipeOnly)
+                                if (syncSwipeOnly) selectedMode = 0
                             }
                         )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // 长按延迟
-            item {
-                SmallTitle(text = "长按触发延迟")
-                Spacer(modifier = Modifier.height(8.dp))
-                Card {
-                    var sliderValue by remember { mutableStateOf(longPressDelay.toFloat()) }
-                    var showInput by remember { mutableStateOf(false) }
-                    var inputText by remember { mutableStateOf(longPressDelay.toString()) }
-
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+    
+                // 符号模式切换（仅同步上滑模式下隐藏）
+                if (!syncSwipeOnly) {
+                    item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = "${sliderValue.toInt()}ms",
-                                fontSize = 14.sp,
-                                color = MiuixTheme.colorScheme.onSurface
-                            )
-                            if (longPressDelay != SymbolConfig.DEFAULT_LONG_PRESS_DELAY) {
-                                Text(
-                                    text = "恢复默认",
-                                    fontSize = 12.sp,
-                                    color = MiuixTheme.colorScheme.primary,
-                                    modifier = Modifier.clickable {
-                                        longPressDelay = SymbolConfig.DEFAULT_LONG_PRESS_DELAY
-                                        sliderValue = SymbolConfig.DEFAULT_LONG_PRESS_DELAY.toFloat()
-                                        SymbolConfig.setLongPressDelay(context, longPressDelay)
-                                    }
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        // 自定义 Slider
-                        var sliderWidth by remember { mutableIntStateOf(1) }
-                        val density = LocalDensity.current
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp)
-                                .onSizeChanged { sliderWidth = it.width.coerceAtLeast(1) }
-                                .pointerInput(Unit) {
-                                    detectDragGestures { change, _ ->
-                                        change.consume()
-                                        val width = size.width.toFloat()
-                                        val fraction = (change.position.x / width).coerceIn(0f, 1f)
-                                        val newValue = (100f + fraction * 900f).let { raw ->
-                                            (raw / 50f).roundToLong() * 50f
-                                        }.coerceIn(100f, 1000f)
-                                        sliderValue = newValue
-                                        longPressDelay = newValue.toLong()
-                                        SymbolConfig.setLongPressDelay(context, longPressDelay)
-                                    }
+                            val modeLabels = listOf("上滑符号", "长按符号")
+                            modeLabels.forEachIndexed { index, label ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(
+                                            if (selectedMode == index) MiuixTheme.colorScheme.primary
+                                            else MiuixTheme.colorScheme.surface
+                                        )
+                                        .clickable { selectedMode = index }
+                                        .padding(vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (selectedMode == index) MiuixTheme.colorScheme.onPrimary
+                                        else MiuixTheme.colorScheme.onSurface,
+                                        fontSize = 13.sp
+                                    )
                                 }
-                        ) {
-                            // 轨道背景
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(4.dp)
-                                    .align(Alignment.Center)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.3f))
-                            )
-                            // 已填充轨道
-                            val fraction = (sliderValue - 100f) / 900f
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(fraction)
-                                    .height(4.dp)
-                                    .align(Alignment.CenterStart)
-                                    .clip(RoundedCornerShape(2.dp))
-                                    .background(MiuixTheme.colorScheme.primary)
-                            )
-                            // 滑块
-                            val thumbOffsetPx = fraction * sliderWidth - sliderWidth / 2f
-                            Box(
-                                modifier = Modifier
-                                    .offset { IntOffset(thumbOffsetPx.toInt(), 0) }
-                                    .size(20.dp)
-                                    .align(Alignment.Center)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(MiuixTheme.colorScheme.primary)
-                            )
+                            }
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(text = "100ms", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                            Text(text = "1000ms", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
-                        }
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Logo 显示/隐藏
-            item {
-                SmallTitle(text = "左上角 Logo")
-                Spacer(modifier = Modifier.height(8.dp))
-                val logoModeOptions = listOf("显示", "隐藏")
-                val currentLogoMode = remember { mutableIntStateOf(SymbolConfig.getLogoMode(this@MainActivity)) }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    logoModeOptions.forEachIndexed { index, label ->
-                        val selected = currentLogoMode.intValue == index
-                        ActionButton(
-                            text = label,
-                            bgColor = if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surface,
-                            textColor = if (selected) MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface
-                        ) {
-                            if (currentLogoMode.intValue != index) {
-                                currentLogoMode.intValue = index
-                                SymbolConfig.setLogoMode(this@MainActivity, index)
+    
+                // 符号键盘
+                item {
+                    if (selectedMode == 0) {
+                        SmallTitle(text = "上滑符号自定义")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        QwertyKeyboard(
+                            symbols = symbols,
+                            defaults = defaults,
+                            onKeyClick = { key ->
+                                editingKey = key
+                                editingValue = symbols[key] ?: ""
+                                editingMode = 0
                             }
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // JSON 导入导出
-            item {
-                SmallTitle(text = "数据管理")
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ActionButton("导出 JSON", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
-                        val json = SymbolConfig.exportToJson(context)
-                        pendingExportJson = json
-                        exportLauncher.launch("wetype-symbols.json")
-                    }
-                    ActionButton("导入 JSON", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
-                        importLauncher.launch(arrayOf("application/json", "text/plain"))
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // WebDAV 同步
-            item {
-                SmallTitle(text = "WebDAV 同步")
-                Spacer(modifier = Modifier.height(8.dp))
-                val config = remember { mutableStateOf(WebDavClient.loadConfig(context)) }
-                Card {
-                    BasicComponent(
-                        title = "服务器地址",
-                        summary = config.value.url.ifEmpty { "未配置" }
-                    )
-                    BasicComponent(
-                        title = "用户名",
-                        summary = config.value.username.ifEmpty { "未配置" }
-                    )
-                    BasicComponent(
-                        title = "设备角色",
-                        summary = if (config.value.isPrimary) "主设备（上传）" else "子设备（下载）"
-                    )
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    ActionButton("配置", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
-                        showWebdavDialog = true
-                    }
-                    val syncScope = rememberCoroutineScope()
-                    ActionButton(
-                        text = if (config.value.isPrimary) "上传到服务器" else "从服务器下载",
-                        bgColor = MiuixTheme.colorScheme.primary,
-                        textColor = MiuixTheme.colorScheme.onPrimary,
-                        onClick = {
-                            val cfg = config.value
-                            if (cfg.url.isEmpty()) {
-                                Toast.makeText(context, "请先配置 WebDAV", Toast.LENGTH_SHORT).show()
-                                return@ActionButton
+                        )
+                    } else {
+                        SmallTitle(text = "长按符号自定义")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        QwertyKeyboard(
+                            symbols = longPressSymbols,
+                            defaults = longPressDefaults,
+                            onKeyClick = { key ->
+                                editingKey = key
+                                editingValue = longPressSymbols[key] ?: longPressDefaults[key] ?: ""
+                                editingMode = 1
                             }
-                            syncScope.launch {
-                                try {
-                                    val client = WebDavClient(cfg.url, cfg.username, cfg.password)
-                                    withContext(Dispatchers.IO) {
-                                        if (cfg.isPrimary) {
-                                            val json = SymbolConfig.exportToJson(context)
-                                            client.upload(json).getOrThrow()
-                                        } else {
-                                            val json = client.download().getOrThrow()
-                                            SymbolConfig.importFromJson(context, json).getOrThrow()
-                                        }
-                                    }
-                                    val msg = if (cfg.isPrimary) "上传成功" else "下载成功"
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "逗号分隔多个符号，如: A,a,ā,á,ǎ,à",
+                            fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurface
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+    
+    
+                // 预设方案
+                item {
+                    SmallTitle(text = "预设方案")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card {
+                        SymbolConfig.PRESETS.forEach { preset ->
+                            BasicComponent(
+                                title = preset.name,
+                                summary = "点击应用此预设",
+                                onClick = {
+                                    SymbolConfig.applyPreset(context, preset)
                                     symbols.clear()
                                     longPressSymbols.clear()
                                     SymbolConfig.getAll(context, keyboardType).forEach { (k, v) -> symbols[k] = v }
                                     SymbolConfig.getAllLongPress(context, keyboardType).forEach { (k, v) -> longPressSymbols[k] = v }
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "同步失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "已应用「${preset.name}」预设", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+    
+                // 滑动+输入
+                item {
+                    SmallTitle(text = "滑动+输入")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card {
+                        var sliderValue by remember { mutableStateOf(longPressDelay.toFloat()) }
+                        var showInput by remember { mutableStateOf(false) }
+                        var inputText by remember { mutableStateOf(longPressDelay.toString()) }
+    
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "${sliderValue.toInt()}ms",
+                                    fontSize = 14.sp,
+                                    color = MiuixTheme.colorScheme.onSurface
+                                )
+                                if (longPressDelay != SymbolConfig.DEFAULT_LONG_PRESS_DELAY) {
+                                    Text(
+                                        text = "恢复默认",
+                                        fontSize = 12.sp,
+                                        color = MiuixTheme.colorScheme.primary,
+                                        modifier = Modifier.clickable {
+                                            longPressDelay = SymbolConfig.DEFAULT_LONG_PRESS_DELAY
+                                            sliderValue = SymbolConfig.DEFAULT_LONG_PRESS_DELAY.toFloat()
+                                            SymbolConfig.setLongPressDelay(context, longPressDelay)
+                                        }
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            // 自定义 Slider
+                            var sliderWidth by remember { mutableIntStateOf(1) }
+                            val density = LocalDensity.current
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(32.dp)
+                                    .onSizeChanged { sliderWidth = it.width.coerceAtLeast(1) }
+                                    .pointerInput(Unit) {
+                                        detectDragGestures { change, _ ->
+                                            change.consume()
+                                            val width = size.width.toFloat()
+                                            val fraction = (change.position.x / width).coerceIn(0f, 1f)
+                                            val newValue = (100f + fraction * 900f).roundToLong().coerceIn(100L, 1000L)
+                                            sliderValue = newValue.toFloat()
+                                            longPressDelay = newValue
+                                            inputText = newValue.toString()
+                                            SymbolConfig.setLongPressDelay(context, longPressDelay)
+                                        }
+                                    }
+                            ) {
+                                // 轨道背景
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(4.dp)
+                                        .align(Alignment.Center)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.3f))
+                                )
+                                // 已填充轨道
+                                val fraction = (sliderValue - 100f) / 900f
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(fraction)
+                                        .height(4.dp)
+                                        .align(Alignment.CenterStart)
+                                        .clip(RoundedCornerShape(2.dp))
+                                        .background(MiuixTheme.colorScheme.primary)
+                                )
+                                // 滑块
+                                val thumbOffsetPx = fraction * sliderWidth - sliderWidth / 2f
+                                Box(
+                                    modifier = Modifier
+                                        .offset { IntOffset(thumbOffsetPx.toInt(), 0) }
+                                        .size(20.dp)
+                                        .align(Alignment.Center)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MiuixTheme.colorScheme.primary)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(text = "100ms", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                Text(text = "1000ms", fontSize = 10.sp, color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(text = "精确输入:", fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurface)
+                                BasicTextField(
+                                    value = inputText,
+                                    onValueChange = { v ->
+                                        inputText = v.filter { it.isDigit() }
+                                        val parsed = inputText.toLongOrNull()
+                                        if (parsed != null && parsed in 100..1000) {
+                                            longPressDelay = parsed
+                                            sliderValue = parsed.toFloat()
+                                            SymbolConfig.setLongPressDelay(context, longPressDelay)
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(MiuixTheme.colorScheme.surface, RoundedCornerShape(6.dp))
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    singleLine = true,
+                                    textStyle = TextStyle(color = MiuixTheme.colorScheme.onSurface, fontSize = 14.sp),
+                                    cursorBrush = androidx.compose.ui.graphics.SolidColor(MiuixTheme.colorScheme.primary),
+                                    decorationBox = { inner ->
+                                        Box {
+                                            if (inputText.isEmpty()) {
+                                                Text(text = "100-1000", color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.3f), fontSize = 14.sp)
+                                            }
+                                            inner()
+                                        }
+                                    }
+                                )
+                                Text(text = "ms", fontSize = 12.sp, color = MiuixTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+    
+                // Logo 显示/隐藏
+                item {
+                    SmallTitle(text = "左上角 Logo")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val logoModeOptions = listOf("显示", "隐藏")
+                    val currentLogoMode = remember { mutableIntStateOf(SymbolConfig.getLogoMode(this@MainActivity)) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        logoModeOptions.forEachIndexed { index, label ->
+                            val selected = currentLogoMode.intValue == index
+                            ActionButton(
+                                text = label,
+                                bgColor = if (selected) MiuixTheme.colorScheme.primary else MiuixTheme.colorScheme.surface,
+                                textColor = if (selected) MiuixTheme.colorScheme.onPrimary else MiuixTheme.colorScheme.onSurface
+                            ) {
+                                if (currentLogoMode.intValue != index) {
+                                    currentLogoMode.intValue = index
+                                    SymbolConfig.setLogoMode(this@MainActivity, index)
                                 }
                             }
                         }
-                    )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-
-            // 关于
-            item {
-                SmallTitle(text = "关于")
-                Spacer(modifier = Modifier.height(8.dp))
-                Card {
-                    BasicComponent(title = "模块名称", summary = "微信输入法上滑符号自定义")
-                    BasicComponent(title = "版本", summary = "1.0.0")
-                    BasicComponent(title = "作者", summary = "Rakurin Natsumi")
-                    BasicComponent(
-                        title = "GitHub",
-                        summary = "NatsumiXD/WeType-Flick",
-                        onClick = {
-                            val intent = Intent(android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse("https://github.com/NatsumiXD/WeType-Flick"))
-                            context.startActivity(intent)
+    
+                // JSON 导入导出
+                item {
+                    SmallTitle(text = "数据管理")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ActionButton("导出 JSON", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
+                            val json = SymbolConfig.exportToJson(context)
+                            pendingExportJson = json
+                            exportLauncher.launch("wetype-symbols.json")
                         }
-                    )
+                        ActionButton("导入 JSON", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
+                            importLauncher.launch(arrayOf("application/json", "text/plain"))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
-                Spacer(modifier = Modifier.height(32.dp))
+    
+                // WebDAV 同步
+                item {
+                    SmallTitle(text = "WebDAV 同步")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    val config = remember { mutableStateOf(WebDavClient.loadConfig(context)) }
+                    Card {
+                        BasicComponent(
+                            title = "服务器地址",
+                            summary = config.value.url.ifEmpty { "未配置" }
+                        )
+                        BasicComponent(
+                            title = "用户名",
+                            summary = config.value.username.ifEmpty { "未配置" }
+                        )
+                        BasicComponent(
+                            title = "设备角色",
+                            summary = if (config.value.isPrimary) "主设备（上传）" else "子设备（下载）"
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ActionButton("配置", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
+                            showWebdavDialog = true
+                        }
+                        val syncScope = rememberCoroutineScope()
+                        ActionButton(
+                            text = if (config.value.isPrimary) "上传到服务器" else "从服务器下载",
+                            bgColor = MiuixTheme.colorScheme.primary,
+                            textColor = MiuixTheme.colorScheme.onPrimary,
+                            onClick = {
+                                val cfg = config.value
+                                if (cfg.url.isEmpty()) {
+                                    Toast.makeText(context, "请先配置 WebDAV", Toast.LENGTH_SHORT).show()
+                                    return@ActionButton
+                                }
+                                syncScope.launch {
+                                    try {
+                                        val client = WebDavClient(cfg.url, cfg.username, cfg.password)
+                                        withContext(Dispatchers.IO) {
+                                            if (cfg.isPrimary) {
+                                                val json = SymbolConfig.exportToJson(context)
+                                                client.upload(json).getOrThrow()
+                                            } else {
+                                                val json = client.download().getOrThrow()
+                                                SymbolConfig.importFromJson(context, json).getOrThrow()
+                                            }
+                                        }
+                                        val msg = if (cfg.isPrimary) "上传成功" else "下载成功"
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                        symbols.clear()
+                                        longPressSymbols.clear()
+                                        SymbolConfig.getAll(context, keyboardType).forEach { (k, v) -> symbols[k] = v }
+                                        SymbolConfig.getAllLongPress(context, keyboardType).forEach { (k, v) -> longPressSymbols[k] = v }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "同步失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+    
+                // 关于
+                item {
+                    SmallTitle(text = "关于")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Card {
+                        BasicComponent(title = "模块名称", summary = "微信输入法上滑符号自定义")
+                        BasicComponent(title = "版本", summary = "1.0.0")
+                        BasicComponent(title = "作者", summary = "Rakurin Natsumi")
+                        BasicComponent(
+                            title = "GitHub",
+                            summary = "NatsumiXD/WeType-Flick",
+                            onClick = {
+                                val intent = Intent(android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("https://github.com/NatsumiXD/WeType-Flick"))
+                                context.startActivity(intent)
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
             }
+    
+            // bottom save/restore - fixed at bottom
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ActionButton("保存", MiuixTheme.colorScheme.primary, MiuixTheme.colorScheme.onPrimary) {
+                    if (selectedMode == 0) {
+                        for (letter in SymbolConfig.LETTERS) {
+                            val key = letter.toString()
+                            val v = symbols[key] ?: ""
+                            if (v.isNotEmpty()) SymbolConfig.setSymbol(context, keyboardType, key, v)
+                            else SymbolConfig.removeSymbol(context, keyboardType, key)
+                        }
+                    } else {
+                        for (letter in SymbolConfig.LETTERS) {
+                            val key = letter.toString()
+                            val v = longPressSymbols[key] ?: ""
+                            if (v.isNotEmpty()) SymbolConfig.setLongPressSymbols(context, keyboardType, key, v)
+                            else SymbolConfig.removeLongPressSymbols(context, keyboardType, key)
+                        }
+                    }
+                    Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
+                }
+                ActionButton("恢复默认", MiuixTheme.colorScheme.surface, MiuixTheme.colorScheme.onSurface) {
+                    if (selectedMode == 0) {
+                        SymbolConfig.resetKeyboard(context, keyboardType)
+                        symbols.clear()
+                    } else {
+                        SymbolConfig.resetLongPressKeyboard(context, keyboardType)
+                        longPressSymbols.clear()
+                    }
+                    Toast.makeText(context, "已恢复默认", Toast.LENGTH_SHORT).show()
+                }
+            }
+            Text(
+                text = if (selectedMode == 0) "灰色为默认符号，蓝色为已自定义\n中英文键盘符号独立配置"
+                else "灰色为默认符号，蓝色为已自定义\n逗号分隔多个符号",
+                fontSize = 12.sp,
+                color = MiuixTheme.colorScheme.onSurface
+            )
         }
 
         // 编辑弹窗

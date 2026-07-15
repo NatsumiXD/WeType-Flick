@@ -619,7 +619,7 @@ class ModuleMain : XposedModule() {
     }
 
     // ========================================================================
-    // Logo 隐藏/替换 — hook ImeCandidateView.a2()
+    // Logo hide/replace - hook ImeCandidateView, hide image but keep clickable
     // ========================================================================
 
     private fun hookLogoHide(classLoader: ClassLoader) {
@@ -627,73 +627,98 @@ class ModuleMain : XposedModule() {
             val candidateViewClass = Class.forName(
                 "com.tencent.wetype.plugin.hld.candidate.ImeCandidateView", true, classLoader
             )
-            // a2(boolean isDarkMode, boolean standaloneMode) — 设置 logo 图标
+
+            fun findViewByRes(view: android.view.View, resName: String): android.view.View? {
+                val res = view.resources
+                var id = res.getIdentifier(resName, "id", view.context.packageName)
+                if (id == 0) id = res.getIdentifier(resName, "id", "com.tencent.wetype")
+                if (id == 0) return null
+                return view.findViewById(id)
+            }
+
+            fun isLogoHideEnabled(): Boolean {
+                val mode = remotePrefs?.getInt(SymbolConfig.KEY_LOGO_MODE, SymbolConfig.LOGO_SHOW)
+                    ?: SymbolConfig.LOGO_SHOW
+                return mode != SymbolConfig.LOGO_SHOW
+            }
+
+            fun hideLogoContent(view: android.view.View) {
+                if (!isLogoHideEnabled()) return
+                val logoIv = findViewByRes(view, "logo_iv")
+                if (logoIv != null && logoIv.visibility != android.view.View.INVISIBLE) {
+                    logoIv.visibility = android.view.View.INVISIBLE
+                }
+                val redPoint = findViewByRes(view, "logo_red_point")
+                if (redPoint != null && redPoint.visibility != android.view.View.GONE) {
+                    redPoint.visibility = android.view.View.GONE
+                }
+            }
+
             val a2Method = candidateViewClass.declaredMethods.find { m ->
                 m.name == "a2" && m.parameterTypes.size == 2 &&
                         m.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
                         m.parameterTypes[1] == Boolean::class.javaPrimitiveType
             }
-            if (a2Method == null) {
+            if (a2Method != null) {
+                a2Method.isAccessible = true
+                hook(a2Method)
+                    .setExceptionMode(ExceptionMode.PROTECTIVE)
+                    .intercept(object : Hooker {
+                        override fun intercept(chain: Chain): Any? {
+                            val result = chain.proceed()
+                            val view = chain.getThisObject() as? android.view.View ?: return result
+                            hideLogoContent(view)
+                            view.post { hideLogoContent(view) }
+                            return result
+                        }
+                    })
+                logw(Log.INFO, "[OK] Hooked a2(boolean,boolean) for logo hide")
+            } else {
                 logw(Log.WARN, "Cannot find a2(boolean,boolean) on ImeCandidateView")
-                return
-            }
-            a2Method.isAccessible = true
-            logw(Log.INFO, "[OK] Found a2(boolean,boolean) on ImeCandidateView")
-
-            // 找到 logo_container_rl 字段
-            val logoContainerField = candidateViewClass.declaredFields.find { f ->
-                f.name == "logoContainerRl" || f.name == "logo_container_rl"
-            } ?: run {
-                // 遍历所有字段，找 RelativeLayout 类型
-                candidateViewClass.declaredFields.firstOrNull { f ->
-                    f.type.name == "android.widget.RelativeLayout"
-                }
             }
 
-            hook(a2Method)
-                .setExceptionMode(ExceptionMode.PROTECTIVE)
-                .intercept(object : Hooker {
-                    override fun intercept(chain: Chain): Any? {
-                        val result = chain.proceed()
-                        val logoMode = remotePrefs?.getInt(SymbolConfig.KEY_LOGO_MODE, SymbolConfig.LOGO_SHOW)
-                            ?: SymbolConfig.LOGO_SHOW
-                        if (logoMode == SymbolConfig.LOGO_SHOW) return result
-
-                        val view = chain.getThisObject() as? android.view.View ?: return result
-
-                        // 通过反射找到 logo_container_rl
-                        val logoContainer = try {
-                            var field = logoContainerField
-                            if (field == null) {
-                                // 尝试通过 ID 找
-                                val id = view.resources.getIdentifier("logo_container_rl", "id", view.context.packageName)
-                                if (id != 0) view.findViewById<android.view.View>(id) else null
-                            } else {
-                                field.isAccessible = true
-                                field.get(view) as? android.view.View
+            try {
+                val getLogoIvMethod = candidateViewClass.getDeclaredMethod("getLogoIv")
+                getLogoIvMethod.isAccessible = true
+                hook(getLogoIvMethod)
+                    .setExceptionMode(ExceptionMode.PROTECTIVE)
+                    .intercept(object : Hooker {
+                        override fun intercept(chain: Chain): Any? {
+                            val result = chain.proceed()
+                            if (!isLogoHideEnabled()) return result
+                            val iv = result as? android.view.View ?: return result
+                            if (iv.visibility != android.view.View.INVISIBLE) {
+                                iv.visibility = android.view.View.INVISIBLE
                             }
-                        } catch (e: Exception) {
-                            null
+                            return result
                         }
+                    })
+                logw(Log.INFO, "[OK] Hooked getLogoIv() for logo hide (INVISIBLE)")
+            } catch (e: NoSuchMethodException) {
+                logw(Log.WARN, "getLogoIv() not found: ${e.message}")
+            }
 
-                        if (logoContainer != null) {
-                            when (logoMode) {
-                                SymbolConfig.LOGO_HIDE -> {
-                                    logoContainer.visibility = android.view.View.GONE
-                                    logw(Log.DEBUG, "[Logo] Hidden")
-                                }
-                                SymbolConfig.LOGO_REPLACE -> {
-                                    logoContainer.visibility = android.view.View.GONE
-                                    logw(Log.DEBUG, "[Logo] Hidden (replace mode)")
-                                }
+            try {
+                val getLogoRedPointMethod = candidateViewClass.getDeclaredMethod("getLogoRedPoint")
+                getLogoRedPointMethod.isAccessible = true
+                hook(getLogoRedPointMethod)
+                    .setExceptionMode(ExceptionMode.PROTECTIVE)
+                    .intercept(object : Hooker {
+                        override fun intercept(chain: Chain): Any? {
+                            val result = chain.proceed()
+                            if (!isLogoHideEnabled()) return result
+                            val rp = result as? android.view.View ?: return result
+                            if (rp.visibility != android.view.View.GONE) {
+                                rp.visibility = android.view.View.GONE
                             }
-                        } else {
-                            logw(Log.WARN, "[Logo] Cannot find logo_container_rl")
+                            return result
                         }
-                        return result
-                    }
-                })
-            logw(Log.INFO, "[OK] Hooked ImeCandidateView.a2() for logo hide/replace")
+                    })
+                logw(Log.INFO, "[OK] Hooked getLogoRedPoint() for logo hide")
+            } catch (e: NoSuchMethodException) {
+                logw(Log.WARN, "getLogoRedPoint() not found: ${e.message}")
+            }
+
         } catch (e: Throwable) {
             logw(Log.WARN, "Logo hook failed: ${e.message}", e)
         }
