@@ -1,0 +1,68 @@
+# .github/workflows/sync-to-xposed.yml
+name: Sync Full Repo and Release to Xposed Repo
+
+on:
+  release:
+    types: [published]          # 仅在正式 Release 发布时触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0         # 获取所有分支、标签和完整提交记录
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ---- 1. 同步所有代码（含完整历史、分支、标签）到目标仓库 ----
+      - name: Push mirror to target repository
+        run: |
+          git remote add target \
+            https://x-access-token:${{ secrets.XPOSED_REPO_TOKEN }}@github.com/Xposed-Modules-Repo/dev.natsumi.wetype.markchanger.git
+          git push target --mirror --force
+
+      # ---- 2. 下载当前 Release 的所有附件（assets） ----
+      - name: Download release assets from source
+        env:
+          GH_TOKEN: ${{ github.token }}      # 使用 GitHub 自带 token 读取源仓库
+        run: |
+          mkdir -p release-assets
+          cd release-assets
+          gh release download ${{ github.event.release.tag_name }} \
+            --repo ${{ github.repository }} \
+            --clobber
+
+      # ---- 3. 在目标仓库创建 / 更新 Release ----
+      - name: Sync release to target repository
+        env:
+          GH_TOKEN: ${{ secrets.XPOSED_REPO_TOKEN }}   # 对目标仓库有写权限的 token
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          TITLE="${{ github.event.release.name }}"
+          TARGET_REPO="Xposed-Modules-Repo/dev.natsumi.wetype.markchanger"
+
+          # 将 Release 说明写入临时文件（保留换行符）
+          echo "${{ github.event.release.body }}" > body.txt
+
+          # 如果目标仓库已存在同名 Release，先删除（避免冲突）
+          gh release view "$TAG" --repo "$TARGET_REPO" > /dev/null 2>&1 && \
+            gh release delete "$TAG" --repo "$TARGET_REPO" --yes || true
+
+          # 创建新 Release（自动关联已推送的标签）
+          gh release create "$TAG" \
+            --repo "$TARGET_REPO" \
+            --title "$TITLE" \
+            --notes-file body.txt
+
+          # 上传下载好的附件（若有）
+          if [ -d release-assets ] && [ "$(ls -A release-assets)" ]; then
+            gh release upload "$TAG" release-assets/* \
+              --repo "$TARGET_REPO" \
+              --clobber
+          fi
