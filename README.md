@@ -1,4 +1,6 @@
-# WeType Symbol Changer
+# WeType-Flick
+
+[仓库](https://github.com/NatsumiXD/WeType-Flick)
 
 微信输入法符号自定义模块（Xposed/LSPosed），支持自定义上滑符号、长按弹出符号、长按延迟、Logo 显示/隐藏等。
 
