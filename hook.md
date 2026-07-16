@@ -2,18 +2,32 @@
 
 本模块所有 Hook 点均在 `ModuleMain.kt` 中实现，使用 Xposed API 102。
 
+## 版本兼容策略
+
+本模块采用**特征发现机制**，不再硬编码混淆类名/方法名，确保跨版本兼容：
+
+| 目标 | 已知全名（快速路径） | 特征匹配规则 |
+|------|----------------------|-------------|
+| 按钮类 (ImeButton) | `selfdraw.j` | 2+ 个 `()→String` 方法 + 1 个 `(String)→void` 方法 |
+| 键盘类 (KeyboardView) | `selfdraw.n` | 拥有 `getKeyboardType()` 方法（返回非 void） |
+| MoreSymbolUtil | `utils.j0` | 静态自身类型字段（单例）+ 2 个同参数类型返回 List 的方法 |
+| SymbolFloatData | `floatview.C` | 10 参数构造器 + String 类型字段 |
+| ImeCandidateView | `ImeCandidateView` | 拥有 `(boolean, boolean)→?` 方法 |
+
+**查找流程**：先尝试已知全名（快速路径）→ 失败则扫描包下所有短名称类（a-z, 0-9, aa-zz, a0-z9）→ 按特征签名匹配。
+
 ## Hook 列表
 
 | # | Hook 目标 | 方法 | 作用 | 行号 |
 |---|-----------|------|------|------|
 | 1 | `android.app.Application` | `attach(Context)` | 捕获应用初始化，初始化文件日志 | 228 |
-| 2 | `KeyboardView` (selfdraw.n) | `f0()` / `initKeyboard()` | 追踪键盘类型（中文/英文） | 302 |
-| 3 | `ImeButton` (selfdraw.j) | `H0(String)` / `setFloatText(String)` | 拦截上滑符号赋值，替换为自定义符号 | 338 |
-| 4 | `ImeButton` (selfdraw.j) | `v()` / `getFloatText()` | 拦截上滑符号读取，返回自定义符号 | 390 |
-| 5 | `MoreSymbolUtil` (utils.j0) | `k(ImeButton)` | 替换长按弹窗符号列表（小写 QWERTY） | 476 |
-| 6 | `MoreSymbolUtil` (utils.j0) | `l(ImeButton)` | 替换长按弹窗符号列表（大写 QWERTY） | 490 |
-| 7 | `Handler` (Android SDK) | `sendMessageDelayed(Message, long)` | 替换长按延迟时间（100ms~1000ms） | 590 |
-| 8 | `ImeCandidateView` | `a2(boolean, boolean)` | 隐藏/替换左上角 Logo | 653 |
+| 2 | `KeyboardView` (selfdraw) | `f0()` / `initKeyboard()` | 追踪键盘类型（中文/英文） | 448 |
+| 3 | `ImeButton` (selfdraw) | `H0(String)` / `setFloatText(String)` | 拦截上滑符号赋值，替换为自定义符号 | 490 |
+| 4 | `ImeButton` (selfdraw) | `v()` / `getFloatText()` | 拦截上滑符号读取，返回自定义符号 | 540 |
+| 5 | `MoreSymbolUtil` (utils) | `k(ImeButton)` | 替换长按弹窗符号列表（小写 QWERTY） | 636 |
+| 6 | `MoreSymbolUtil` (utils) | `l(ImeButton)` | 替换长按弹窗符号列表（大写 QWERTY） | 650 |
+| 7 | `Handler` (Android SDK) | `sendMessageDelayed(Message, long)` | 替换长按延迟时间（100ms~1000ms） | 840 |
+| 8 | `ImeCandidateView` | `(boolean, boolean)` | 隐藏/替换左上角 Logo | 915 |
 
 ## 详细说明
 
@@ -29,7 +43,7 @@
 ### 2. 键盘类型追踪
 
 ```
-类: com.tencent.wetype.plugin.hld.keyboard.selfdraw.n
+类: 通过 getKeyboardType() 方法特征发现（原 selfdraw.n）
 方法: f0() (混淆名) / initKeyboard()
 时机: 键盘初始化时
 作用: 通过 getKeyboardType() 判断当前是中文还是英文键盘
@@ -39,7 +53,7 @@
 ### 3. H0 / setFloatText（上滑符号设置）
 
 ```
-类: com.tencent.wetype.plugin.hld.keyboard.selfdraw.j
+类: 通过 2 个无参 String 方法 + 1 个 String 参数 void 方法特征发现（原 selfdraw.j）
 方法: H0(String) (混淆名) / setFloatText(String)
 参数: String — 原始上滑符号
 时机: 每次设置按钮上滑符号时
@@ -53,7 +67,7 @@
 ### 4. v() / getFloatText（上滑符号读取）
 
 ```
-类: com.tencent.wetype.plugin.hld.keyboard.selfdraw.j
+类: 通过 2 个无参 String 方法 + 1 个 String 参数 void 方法特征发现（原 selfdraw.j）
 方法: v() (混淆名) / getFloatText()
 返回: String — 上滑符号
 时机: 每次读取按钮上滑符号时（热路径）
@@ -65,7 +79,7 @@
 ### 5-6. k() / l()（长按弹窗符号列表）
 
 ```
-类: com.tencent.wetype.plugin.hld.utils.j0
+类: 通过单例字段 + 同参数类型 List 方法特征发现（原 utils.j0）
 方法: k(ImeButton) — 小写 QWERTY 长按符号
       l(ImeButton) — 大写 QWERTY 长按符号
 返回: List<SymbolFloatData>
@@ -99,10 +113,10 @@
   4. 返回 true 阻止原调用
 ```
 
-### 8. ImeCandidateView.a2()（Logo 隐藏）
+### 8. ImeCandidateView（Logo 隐藏）
 
 ```
-类: com.tencent.wetype.plugin.hld.candidate.ImeCandidateView
+类: 通过 (boolean, boolean) 方法特征发现（原 ImeCandidateView）
 方法: a2(boolean isDarkMode, boolean standaloneMode)
 时机: 候选栏视图初始化/更新时
 作用: 原方法设置 Logo 图标，Hook 后根据设置隐藏 Logo

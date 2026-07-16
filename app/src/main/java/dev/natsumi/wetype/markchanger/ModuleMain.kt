@@ -249,21 +249,42 @@ class ModuleMain : XposedModule() {
             }
         }
 
-        val buttonClass = try {
-            Class.forName("com.tencent.wetype.plugin.hld.keyboard.selfdraw.j", true, classLoader)
-        } catch (e: ClassNotFoundException) {
-            logw(Log.ERROR, "CLASS NOT FOUND: com.tencent.wetype.plugin.hld.keyboard.selfdraw.j", e)
+        val buttonClass = findClassByFeature(
+            classLoader = classLoader,
+            knownNames = arrayOf(
+                "com.tencent.wetype.plugin.hld.keyboard.selfdraw.j",
+                "com.tencent.wetype.plugin.hld.keyboard.selfdraw.a",
+                "com.tencent.wetype.plugin.hld.keyboard.selfdraw.b"
+            ),
+            packagePrefix = "com.tencent.wetype.plugin.hld.keyboard.selfdraw",
+            featureCheck = ::isButtonClass,
+            label = "Button"
+        ) ?: run {
+            logw(Log.ERROR, "Cannot find button class")
             return
         }
-        logw(Log.INFO, "[OK] Button class (ImeButton): $buttonClass")
+        logw(Log.INFO, "[OK] Button class (ImeButton): ${buttonClass.name}")
 
         getMainTextMethod = findMethod(buttonClass, "R", "getMainText")
+            ?: findNoArgStringMethod(buttonClass)
             ?: run { logw(Log.ERROR, "Cannot find getMainText/R on button class"); return }
 
         setFloatTextMethod = findMethodWithStringParam(buttonClass, "H0", "setFloatText")
+            ?: findMethodByParamAndReturn(buttonClass, String::class.java, Void.TYPE)
             ?: run { logw(Log.ERROR, "Cannot find H0/setFloatText on button class"); return }
 
         getFloatTextMethod = findMethod(buttonClass, "v", "getFloatText")
+            ?: run {
+                // 找到所有无参 String 返回方法，排除 getMainText 对应的那个
+                val candidates = buttonClass.declaredMethods.filter {
+                    it.parameterTypes.isEmpty() && it.returnType == String::class.java
+                }.filter { it != getMainTextMethod }
+                if (candidates.isNotEmpty()) {
+                    val m = candidates.first()
+                    m.isAccessible = true
+                    m
+                } else null
+            }
             ?: run { logw(Log.ERROR, "Cannot find v/getFloatText on button class"); return }
 
         floatTextField = findFloatTextField(buttonClass)
@@ -288,16 +309,205 @@ class ModuleMain : XposedModule() {
     }
 
     // ========================================================================
+    // Class Discovery — 通用化混淆类/方法发现
+    // ========================================================================
+
+    /**
+     * 扫描指定包下所有短名称类，覆盖 R8 混淆命名规则。
+     * 扫描范围：a-z, 0-9, aa-zz, a0-z9, 0a-9z, 00-99
+     */
+    private fun scanPackageClasses(
+        classLoader: ClassLoader,
+        packagePrefix: String
+    ): Sequence<Class<*>> = sequence {
+        val chars = ('a'..'z') + ('0'..'9')
+        for (c in chars) {
+            try {
+                yield(Class.forName("$packagePrefix.$c", false, classLoader))
+            } catch (_: ClassNotFoundException) {}
+        }
+        for (c1 in chars) {
+            for (c2 in chars) {
+                try {
+                    yield(Class.forName("$packagePrefix.$c1$c2", false, classLoader))
+                } catch (_: ClassNotFoundException) {}
+            }
+        }
+    }
+
+    /**
+     * 通过特征在包中查找类：先尝试已知全名（快速路径），再扫描包（兼容新版本）。
+     */
+    private fun findClassByFeature(
+        classLoader: ClassLoader,
+        knownNames: Array<String>,
+        packagePrefix: String,
+        featureCheck: (Class<*>) -> Boolean,
+        label: String
+    ): Class<*>? {
+        for (name in knownNames) {
+            try {
+                val clazz = Class.forName(name, false, classLoader)
+                if (featureCheck(clazz)) {
+                    logw(Log.INFO, "[Discovery:$label] Known name hit: $name")
+                    return clazz
+                }
+            } catch (_: ClassNotFoundException) {}
+        }
+        logw(Log.INFO, "[Discovery:$label] Scanning $packagePrefix ...")
+        for (clazz in scanPackageClasses(classLoader, packagePrefix)) {
+            if (featureCheck(clazz)) {
+                logw(Log.INFO, "[Discovery:$label] Feature match: ${clazz.name}")
+                return clazz
+            }
+        }
+        logw(Log.WARN, "[Discovery:$label] NOT FOUND in $packagePrefix")
+        return null
+    }
+
+    // ---- Feature checks ----
+
+    /**
+     * 按钮类特征：2+ 个无参返回 String 的方法 + 1 个接收 String 返回 void 的方法
+     * 对应 getMainText / getFloatText / setFloatText
+     */
+    private fun isButtonClass(clazz: Class<*>): Boolean {
+        if (java.lang.reflect.Modifier.isAbstract(clazz.modifiers)) return false
+        val methods = clazz.declaredMethods
+        var noParamStringReturnCount = 0
+        var hasStringParamVoidReturn = false
+        for (m in methods) {
+            if (m.parameterTypes.isEmpty() && m.returnType == String::class.java) {
+                noParamStringReturnCount++
+            }
+            if (m.parameterTypes.size == 1 &&
+                m.parameterTypes[0] == String::class.java &&
+                m.returnType == Void.TYPE) {
+                hasStringParamVoidReturn = true
+            }
+        }
+        return noParamStringReturnCount >= 2 && hasStringParamVoidReturn
+    }
+
+    /**
+     * 键盘类特征：拥有 getKeyboardType() 方法（返回非 void 类型）
+     */
+    private fun isKeyboardClass(clazz: Class<*>): Boolean {
+        if (java.lang.reflect.Modifier.isAbstract(clazz.modifiers)) return false
+        return try {
+            clazz.getDeclaredMethod("getKeyboardType").returnType != Void.TYPE
+        } catch (_: NoSuchMethodException) {
+            false
+        }
+    }
+
+    /**
+     * MoreSymbolUtil 特征：静态自身类型字段（单例）+ 2 个同参数类型返回 List 的方法
+     */
+    private fun isMoreSymbolUtilClass(clazz: Class<*>): Boolean {
+        if (java.lang.reflect.Modifier.isAbstract(clazz.modifiers)) return false
+        val hasSingleton = clazz.declaredFields.any {
+            java.lang.reflect.Modifier.isStatic(it.modifiers) && it.type == clazz
+        }
+        if (!hasSingleton) return false
+        val listMethods = clazz.declaredMethods.filter {
+            it.returnType == java.util.List::class.java && it.parameterCount == 1
+        }
+        if (listMethods.size < 2) return false
+        val paramType = listMethods[0].parameterTypes[0]
+        return listMethods.all { it.parameterTypes[0] == paramType }
+    }
+
+    /**
+     * SymbolFloatData 特征：10 参数构造器 + String 类型字段
+     */
+    private fun isSymbolFloatDataClass(clazz: Class<*>): Boolean {
+        if (java.lang.reflect.Modifier.isAbstract(clazz.modifiers)) return false
+        val has10ParamCtor = clazz.declaredConstructors.any { it.parameterCount == 10 }
+        if (!has10ParamCtor) return false
+        return clazz.declaredFields.any { it.type == String::class.java }
+    }
+
+    /**
+     * ImeCandidateView 特征：拥有双 boolean 参数的方法（a2 方法）
+     */
+    private fun isCandidateViewClass(clazz: Class<*>): Boolean {
+        return clazz.declaredMethods.any {
+            it.parameterTypes.size == 2 &&
+                it.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
+                it.parameterTypes[1] == Boolean::class.javaPrimitiveType
+        }
+    }
+
+    // ---- 签名匹配的通用方法查找 ----
+
+    /** 按返回类型 + 无参数查找方法 */
+    private fun findNoArgStringMethod(clazz: Class<*>): Method? {
+        for (m in clazz.declaredMethods) {
+            if (m.parameterTypes.isEmpty() && m.returnType == String::class.java) {
+                m.isAccessible = true
+                return m
+            }
+        }
+        return null
+    }
+
+    /** 按返回类型 + 参数类型查找方法（排除标准方法名如 toString 等） */
+    private fun findMethodBySignature(
+        clazz: Class<*>,
+        returnType: Class<*>,
+        paramTypes: Array<Class<*>> = emptyArray(),
+        excludeNames: Set<String> = setOf("toString", "hashCode", "equals", "getClass", "notify", "wait")
+    ): Method? {
+        for (m in clazz.declaredMethods) {
+            if (m.name in excludeNames) continue
+            if (m.returnType == returnType && m.parameterTypes.contentEquals(paramTypes)) {
+                m.isAccessible = true
+                return m
+            }
+        }
+        return null
+    }
+
+    /** 按参数类型和返回类型查找方法（单参数版本） */
+    private fun findMethodByParamAndReturn(
+        clazz: Class<*>,
+        paramType: Class<*>,
+        returnType: Class<*>
+    ): Method? {
+        for (m in clazz.declaredMethods) {
+            if (m.returnType == returnType &&
+                m.parameterTypes.size == 1 &&
+                m.parameterTypes[0] == paramType) {
+                m.isAccessible = true
+                return m
+            }
+        }
+        return null
+    }
+
+    // ========================================================================
     // 键盘类型追踪 — hook n.f0()
     // ========================================================================
 
     private fun hookKeyboardTypeTracking(classLoader: ClassLoader) {
         try {
-            val keyboardBaseClass = Class.forName(
-                "com.tencent.wetype.plugin.hld.keyboard.selfdraw.n", true, classLoader
-            )
+            val keyboardBaseClass = findClassByFeature(
+                classLoader = classLoader,
+                knownNames = arrayOf(
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.n",
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.a",
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.b"
+                ),
+                packagePrefix = "com.tencent.wetype.plugin.hld.keyboard.selfdraw",
+                featureCheck = ::isKeyboardClass,
+                label = "Keyboard"
+            ) ?: run {
+                logw(Log.WARN, "Cannot find keyboard base class")
+                return
+            }
             val f0Method = findMethod(keyboardBaseClass, "f0", "initKeyboard")
-                ?: run { logw(Log.WARN, "Cannot find f0 on keyboard base class"); return }
+                ?: run { logw(Log.WARN, "Cannot find f0/initKeyboard on keyboard base class"); return }
 
             hook(f0Method)
                 .setExceptionMode(ExceptionMode.PROTECTIVE)
@@ -428,20 +638,59 @@ class ModuleMain : XposedModule() {
 
     private fun hookLongPressSymbols(classLoader: ClassLoader) {
         try {
-            val moreSymbolUtilClass = Class.forName(
-                "com.tencent.wetype.plugin.hld.utils.j0", true, classLoader
-            )
-            val buttonClass = Class.forName(
-                "com.tencent.wetype.plugin.hld.keyboard.selfdraw.j", true, classLoader
-            )
+            val moreSymbolUtilClass = findClassByFeature(
+                classLoader = classLoader,
+                knownNames = arrayOf(
+                    "com.tencent.wetype.plugin.hld.utils.j0",
+                    "com.tencent.wetype.plugin.hld.utils.a",
+                    "com.tencent.wetype.plugin.hld.utils.b"
+                ),
+                packagePrefix = "com.tencent.wetype.plugin.hld.utils",
+                featureCheck = ::isMoreSymbolUtilClass,
+                label = "MoreSymbolUtil"
+            ) ?: run {
+                logw(Log.WARN, "Cannot find MoreSymbolUtil class")
+                return
+            }
 
-            // SymbolFloatData 运行时 obfuscated name: C
-            val sfDataClass = Class.forName(
-                "com.tencent.wetype.plugin.hld.floatview.C", true, classLoader
-            )
+            val buttonClass = findClassByFeature(
+                classLoader = classLoader,
+                knownNames = arrayOf(
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.j",
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.a",
+                    "com.tencent.wetype.plugin.hld.keyboard.selfdraw.b"
+                ),
+                packagePrefix = "com.tencent.wetype.plugin.hld.keyboard.selfdraw",
+                featureCheck = ::isButtonClass,
+                label = "Button(for LongPress)"
+            ) ?: run {
+                logw(Log.WARN, "Cannot find button class for long-press hook")
+                return
+            }
 
-            // text 字段
-            val textField = sfDataClass.getDeclaredField("a").apply { isAccessible = true }
+            val sfDataClass = findClassByFeature(
+                classLoader = classLoader,
+                knownNames = arrayOf(
+                    "com.tencent.wetype.plugin.hld.floatview.C",
+                    "com.tencent.wetype.plugin.hld.floatview.a",
+                    "com.tencent.wetype.plugin.hld.floatview.b"
+                ),
+                packagePrefix = "com.tencent.wetype.plugin.hld.floatview",
+                featureCheck = ::isSymbolFloatDataClass,
+                label = "SymbolFloatData"
+            ) ?: run {
+                logw(Log.WARN, "Cannot find SymbolFloatData class")
+                return
+            }
+
+            // text 字段 — 按字段类型和上下文查找
+            val textField = sfDataClass.declaredFields.find {
+                it.type == String::class.java
+            }?.apply { isAccessible = true }
+                ?: run {
+                    logw(Log.WARN, "Cannot find text field on SymbolFloatData")
+                    return
+                }
 
             // 10参数 synthetic 构造器
             val sfCtor = sfDataClass.declaredConstructors.find { it.parameterCount == 10 }
@@ -624,9 +873,18 @@ class ModuleMain : XposedModule() {
 
     private fun hookLogoHide(classLoader: ClassLoader) {
         try {
-            val candidateViewClass = Class.forName(
-                "com.tencent.wetype.plugin.hld.candidate.ImeCandidateView", true, classLoader
-            )
+            val candidateViewClass = findClassByFeature(
+                classLoader = classLoader,
+                knownNames = arrayOf(
+                    "com.tencent.wetype.plugin.hld.candidate.ImeCandidateView"
+                ),
+                packagePrefix = "com.tencent.wetype.plugin.hld.candidate",
+                featureCheck = ::isCandidateViewClass,
+                label = "CandidateView"
+            ) ?: run {
+                logw(Log.WARN, "Cannot find ImeCandidateView class")
+                return
+            }
 
             fun findViewByRes(view: android.view.View, resName: String): android.view.View? {
                 val res = view.resources
@@ -655,9 +913,9 @@ class ModuleMain : XposedModule() {
             }
 
             val a2Method = candidateViewClass.declaredMethods.find { m ->
-                m.name == "a2" && m.parameterTypes.size == 2 &&
-                        m.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
-                        m.parameterTypes[1] == Boolean::class.javaPrimitiveType
+                m.parameterTypes.size == 2 &&
+                    m.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
+                    m.parameterTypes[1] == Boolean::class.javaPrimitiveType
             }
             if (a2Method != null) {
                 a2Method.isAccessible = true
@@ -672,51 +930,70 @@ class ModuleMain : XposedModule() {
                             return result
                         }
                     })
-                logw(Log.INFO, "[OK] Hooked a2(boolean,boolean) for logo hide")
+                logw(Log.INFO, "[OK] Hooked init(boolean,boolean) for logo hide")
             } else {
                 logw(Log.WARN, "Cannot find a2(boolean,boolean) on ImeCandidateView")
             }
 
+            // Hook getLogoIv — 按名称或返回类型特征查找
             try {
-                val getLogoIvMethod = candidateViewClass.getDeclaredMethod("getLogoIv")
-                getLogoIvMethod.isAccessible = true
-                hook(getLogoIvMethod)
-                    .setExceptionMode(ExceptionMode.PROTECTIVE)
-                    .intercept(object : Hooker {
-                        override fun intercept(chain: Chain): Any? {
-                            val result = chain.proceed()
-                            if (!isLogoHideEnabled()) return result
-                            val iv = result as? android.view.View ?: return result
-                            if (iv.visibility != android.view.View.INVISIBLE) {
-                                iv.visibility = android.view.View.INVISIBLE
+                val getLogoIvMethod = candidateViewClass.declaredMethods.find { m ->
+                    (m.name == "getLogoIv" ||
+                        (m.parameterTypes.isEmpty() &&
+                            m.returnType == android.view.View::class.java &&
+                            m.name.contains("logo", ignoreCase = true)))
+                }?.apply { isAccessible = true }
+                if (getLogoIvMethod != null) {
+                    hook(getLogoIvMethod)
+                        .setExceptionMode(ExceptionMode.PROTECTIVE)
+                        .intercept(object : Hooker {
+                            override fun intercept(chain: Chain): Any? {
+                                val result = chain.proceed()
+                                if (!isLogoHideEnabled()) return result
+                                val iv = result as? android.view.View ?: return result
+                                if (iv.visibility != android.view.View.INVISIBLE) {
+                                    iv.visibility = android.view.View.INVISIBLE
+                                }
+                                return result
                             }
-                            return result
-                        }
-                    })
-                logw(Log.INFO, "[OK] Hooked getLogoIv() for logo hide (INVISIBLE)")
-            } catch (e: NoSuchMethodException) {
-                logw(Log.WARN, "getLogoIv() not found: ${e.message}")
+                        })
+                    logw(Log.INFO, "[OK] Hooked ${getLogoIvMethod.name}() for logo hide (INVISIBLE)")
+                } else {
+                    logw(Log.WARN, "getLogoIv() not found by name or feature")
+                }
+            } catch (e: Throwable) {
+                logw(Log.WARN, "getLogoIv hook failed: ${e.message}")
             }
 
+            // Hook getLogoRedPoint — 按名称或返回类型特征查找
             try {
-                val getLogoRedPointMethod = candidateViewClass.getDeclaredMethod("getLogoRedPoint")
-                getLogoRedPointMethod.isAccessible = true
-                hook(getLogoRedPointMethod)
-                    .setExceptionMode(ExceptionMode.PROTECTIVE)
-                    .intercept(object : Hooker {
-                        override fun intercept(chain: Chain): Any? {
-                            val result = chain.proceed()
-                            if (!isLogoHideEnabled()) return result
-                            val rp = result as? android.view.View ?: return result
-                            if (rp.visibility != android.view.View.GONE) {
-                                rp.visibility = android.view.View.GONE
+                val getLogoRedPointMethod = candidateViewClass.declaredMethods.find { m ->
+                    (m.name == "getLogoRedPoint" ||
+                        (m.parameterTypes.isEmpty() &&
+                            m.returnType == android.view.View::class.java &&
+                            (m.name.contains("red", ignoreCase = true) ||
+                                m.name.contains("point", ignoreCase = true))))
+                }?.apply { isAccessible = true }
+                if (getLogoRedPointMethod != null) {
+                    hook(getLogoRedPointMethod)
+                        .setExceptionMode(ExceptionMode.PROTECTIVE)
+                        .intercept(object : Hooker {
+                            override fun intercept(chain: Chain): Any? {
+                                val result = chain.proceed()
+                                if (!isLogoHideEnabled()) return result
+                                val rp = result as? android.view.View ?: return result
+                                if (rp.visibility != android.view.View.GONE) {
+                                    rp.visibility = android.view.View.GONE
+                                }
+                                return result
                             }
-                            return result
-                        }
-                    })
-                logw(Log.INFO, "[OK] Hooked getLogoRedPoint() for logo hide")
-            } catch (e: NoSuchMethodException) {
-                logw(Log.WARN, "getLogoRedPoint() not found: ${e.message}")
+                        })
+                    logw(Log.INFO, "[OK] Hooked ${getLogoRedPointMethod.name}() for logo hide")
+                } else {
+                    logw(Log.WARN, "getLogoRedPoint() not found by name or feature")
+                }
+            } catch (e: Throwable) {
+                logw(Log.WARN, "getLogoRedPoint hook failed: ${e.message}")
             }
 
         } catch (e: Throwable) {
@@ -753,25 +1030,36 @@ class ModuleMain : XposedModule() {
     }
 
     private fun findFloatTextField(clazz: Class<*>): Field? {
+        // 先尝试已知字段名
         for (name in listOf("v", "floatText")) {
             try {
                 val f = clazz.getDeclaredField(name)
                 if (f.type == String::class.java) {
                     f.isAccessible = true
-                    logw(Log.INFO, "[OK] Found floatText field: $name")
+                    logw(Log.INFO, "[OK] Found floatText field by name: $name")
                     return f
                 }
             } catch (_: NoSuchFieldException) {}
         }
+        // 按名称特征匹配
         for (f in clazz.declaredFields) {
-            if (f.type == String::class.java && f.name != "p" && f.name != "mainText") {
+            if (f.type == String::class.java) {
                 val fieldName = f.name
-                if (fieldName == "v" || fieldName == "floatText" ||
-                    fieldName.contains("float", ignoreCase = true)) {
+                if (fieldName.contains("float", ignoreCase = true) ||
+                    fieldName.contains("super", ignoreCase = true)) {
                     f.isAccessible = true
                     logw(Log.WARN, "[OK] Fallback floatText field: $fieldName")
                     return f
                 }
+            }
+        }
+        // 兜底：排除已知不是的字段名，取第一个 String 字段
+        val excludedNames = setOf("p", "mainText")
+        for (f in clazz.declaredFields) {
+            if (f.type == String::class.java && f.name !in excludedNames) {
+                f.isAccessible = true
+                logw(Log.WARN, "[OK] Fallback floatText field (first String): ${f.name}")
+                return f
             }
         }
         return null
