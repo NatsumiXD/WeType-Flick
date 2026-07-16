@@ -2,6 +2,7 @@
 name: Sync Full Repo and Release to Xposed Repo
 
 on:
+  workflow_dispatch:
   release:
     types: [published]          # 仅在正式 Release 发布时触发
 
