@@ -50,6 +50,10 @@ class ModuleMain : XposedModule() {
     private val mainTextCache = WeakHashMap<Any, String>(64)
     private val symbolCache = WeakHashMap<Any, String?>(64)
 
+    // ---- 按钮→键盘引用字段缓存 ----
+    private var buttonKeyboardField: Field? = null
+    private var buttonKeyboardFieldResolved = false
+
     // ---- 原始上滑符号缓存（用于仅同步模式查找功能码） ----
     private val originalFloatTextMap = HashMap<String, String>(52)
 
@@ -185,12 +189,11 @@ class ModuleMain : XposedModule() {
     private fun getCustomSymbol(letter: String): String? {
         val key = letter.lowercase()
         val type = currentKeyboardType
-        val result = if (type == SymbolConfig.EN) {
-            enSymbols[key] ?: cnSymbols[key]
+        return if (type == SymbolConfig.EN) {
+            enSymbols[key]
         } else {
             cnSymbols[key]
         }
-        return result
     }
 
     /** 获取当前键盘类型对应的自定义长按符号列表 */
@@ -198,7 +201,7 @@ class ModuleMain : XposedModule() {
         val key = letter.lowercase()
         val type = currentKeyboardType
         return if (type == SymbolConfig.EN) {
-            enLongSymbols[key] ?: cnLongSymbols[key]
+            enLongSymbols[key]
         } else {
             cnLongSymbols[key]
         }
@@ -212,6 +215,35 @@ class ModuleMain : XposedModule() {
         } catch (_: Exception) { null }
         if (mainText != null) mainTextCache[button] = mainText
         return mainText
+    }
+
+    /**
+     * 从按钮实例反向获取其所属键盘的 KeyboardType，
+     * 不依赖 f0() hook 中设置的 currentKeyboardType。
+     */
+    private fun getKeyboardTypeFromButton(button: Any): String {
+        try {
+            if (!buttonKeyboardFieldResolved) {
+                buttonKeyboardFieldResolved = true
+                // 按钮类 j 的 final 字段：类型为 keyboard.selfdraw.n（键盘基类）
+                buttonKeyboardField = button.javaClass.declaredFields.find { f ->
+                    java.lang.reflect.Modifier.isFinal(f.modifiers) &&
+                        !f.type.isPrimitive &&
+                        f.type != String::class.java &&
+                        f.type.name.contains("selfdraw.")
+                }
+                buttonKeyboardField?.isAccessible = true
+                logw(Log.INFO, "[OK] buttonKeyboardField: ${buttonKeyboardField?.name} (${buttonKeyboardField?.type?.name})")
+            }
+            val keyboard = buttonKeyboardField?.get(button) ?: return currentKeyboardType
+            val typeName = try {
+                val typeMethod = keyboard.javaClass.getMethod("getKeyboardType")
+                val type = typeMethod.invoke(keyboard)
+                type?.toString() ?: ""
+            } catch (_: Exception) { "" }
+            return if (typeName.contains("English", ignoreCase = true)) SymbolConfig.EN else SymbolConfig.CN
+        } catch (_: Exception) {}
+        return currentKeyboardType
     }
 
     // ========================================================================
@@ -513,7 +545,8 @@ class ModuleMain : XposedModule() {
                 .setExceptionMode(ExceptionMode.PROTECTIVE)
                 .intercept(object : Hooker {
                     override fun intercept(chain: Chain): Any? {
-                        val result = chain.proceed()
+                        // 先检测键盘类型（H0 在 f0 内部调用，必须在此之前设置好 currentKeyboardType）
+                        val previousType = currentKeyboardType
                         try {
                             val keyboard = chain.getThisObject()
                             val typeMethod = keyboard.javaClass.getMethod("getKeyboardType")
@@ -524,10 +557,33 @@ class ModuleMain : XposedModule() {
                             } else {
                                 SymbolConfig.CN
                             }
-                            logw(Log.DEBUG, "Keyboard type: $currentKeyboardType ($typeName)")
+                            logw(Log.DEBUG, "Keyboard type (pre-init): $currentKeyboardType ($typeName)")
                         } catch (e: Exception) {
-                            logw(Log.WARN, "getKeyboardType failed: ${e.message}")
+                            logw(Log.WARN, "getKeyboardType (pre-init) failed: ${e.message}")
                         }
+
+                        val result = chain.proceed()
+
+                        // proceed 后再次检测 + 类型切换时清理缓存
+                        try {
+                            val keyboard = chain.getThisObject()
+                            val typeMethod = keyboard.javaClass.getMethod("getKeyboardType")
+                            val type = typeMethod.invoke(keyboard)
+                            val typeName = type?.toString() ?: ""
+                            currentKeyboardType = if (typeName.contains("English", ignoreCase = true)) {
+                                SymbolConfig.EN
+                            } else {
+                                SymbolConfig.CN
+                            }
+                            if (previousType != currentKeyboardType) {
+                                symbolCache.clear()
+                                mainTextCache.clear()
+                                logw(Log.INFO, "Keyboard type changed: $previousType -> $currentKeyboardType, caches cleared")
+                            }
+                        } catch (e: Exception) {
+                            logw(Log.WARN, "getKeyboardType (post-init) failed: ${e.message}")
+                        }
+
                         return result
                     }
                 })
@@ -553,6 +609,9 @@ class ModuleMain : XposedModule() {
                     val originalFloatText = chain.getArg(0) as? String ?: ""
 
                     chain.proceed()
+
+                    // 从按钮实例实时检测键盘类型，不依赖 f0() hook
+                    currentKeyboardType = getKeyboardTypeFromButton(button)
 
                     val mainText = getMainTextCached(button) ?: return null
 
@@ -601,6 +660,9 @@ class ModuleMain : XposedModule() {
             .intercept(object : Hooker {
                 override fun intercept(chain: Chain): Any? {
                     val button = chain.getThisObject()
+
+                    // 从按钮实例实时检测键盘类型，不依赖 f0() hook
+                    currentKeyboardType = getKeyboardTypeFromButton(button)
 
                     // 快速路径：缓存命中直接返回
                     val cached = symbolCache[button]
@@ -758,6 +820,9 @@ class ModuleMain : XposedModule() {
         textField: Field,
         ctor: java.lang.reflect.Constructor<*>
     ): List<*> {
+        // 从按钮实例实时检测键盘类型
+        currentKeyboardType = getKeyboardTypeFromButton(button)
+
         val prefs = remotePrefs
         val syncOnly = prefs?.getBoolean(SymbolConfig.KEY_SYNC_SWIPE_ONLY, false) ?: false
         val mainText = getMainTextCached(button)
