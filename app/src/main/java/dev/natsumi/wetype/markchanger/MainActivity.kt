@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -56,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -103,6 +105,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private var pendingExportJson: String? = null
+    private val logoImageVersion = mutableStateOf(0)
 
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -130,6 +133,54 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 Toast.makeText(this, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    private val logoImageLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { processLogoImage(it) }
+    }
+
+    private fun processLogoImage(uri: android.net.Uri) {
+        try {
+            val bitmap = contentResolver.openInputStream(uri)?.use { input ->
+                android.graphics.BitmapFactory.decodeStream(input)
+            } ?: run {
+                Toast.makeText(this, "无法读取图片", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            // 缩放至最大 256x256，保持宽高比
+            val maxDim = 256
+            val w = bitmap.width
+            val h = bitmap.height
+            val scaled = if (w > maxDim || h > maxDim) {
+                val scale = maxDim.toFloat() / maxOf(w, h)
+                android.graphics.Bitmap.createScaledBitmap(
+                    bitmap, (w * scale).toInt().coerceAtLeast(1), (h * scale).toInt().coerceAtLeast(1), true
+                ).also { if (it != bitmap) bitmap.recycle() }
+            } else {
+                bitmap
+            }
+
+            // 压缩为 PNG 并 Base64 编码
+            val baos = java.io.ByteArrayOutputStream()
+            scaled.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, baos)
+            scaled.recycle()
+            val base64 = android.util.Base64.encodeToString(baos.toByteArray(), android.util.Base64.DEFAULT)
+
+            // 检查大小限制（~200KB Base64，约 150KB 图片）
+            if (base64.length > 300_000) {
+                Toast.makeText(this, "图片过大，请选择更小的图标", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            SymbolConfig.setLogoImage(this, base64)
+            logoImageVersion.value++
+            Toast.makeText(this, "Logo 图标已设置，重启键盘生效", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "处理图片失败: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -589,13 +640,19 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // Logo 显示/隐藏
+                // Logo 显示/隐藏/替换
                 item {
                     SmallTitle(text = "左上角 Logo")
                     Spacer(modifier = Modifier.height(8.dp))
                     Card {
-                        val logoModeOptions = listOf("显示" to "保留微信输入法 Logo", "隐藏" to "隐藏 Logo，节省空间")
+                        val logoModeOptions = listOf(
+                            "显示" to "保留微信输入法 Logo",
+                            "隐藏" to "隐藏 Logo，节省空间",
+                            "替换" to "使用自定义图标替换 Logo"
+                        )
                         val currentLogoMode = remember { mutableIntStateOf(SymbolConfig.getLogoMode(this@MainActivity)) }
+                        val logoVer = this@MainActivity.logoImageVersion.value
+                        val hasLogoImage = remember(logoVer) { mutableStateOf(SymbolConfig.getLogoImage(this@MainActivity) != null) }
                         Column {
                             logoModeOptions.forEachIndexed { index, (label, desc) ->
                                 BasicComponent(
@@ -609,6 +666,62 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                             }
+                        }
+                        // 替换模式：显示图标选择/预览/清除
+                        if (currentLogoMode.intValue == SymbolConfig.LOGO_REPLACE) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // 预览
+                                val logoBase64 = SymbolConfig.getLogoImage(this@MainActivity)
+                                if (logoBase64 != null) {
+                                    val previewBitmap = remember(logoBase64, logoVer) {
+                                        try {
+                                            val bytes = android.util.Base64.decode(logoBase64, android.util.Base64.DEFAULT)
+                                            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                        } catch (_: Exception) { null }
+                                    }
+                                    previewBitmap?.let {
+                                        Image(
+                                            bitmap = it.asImageBitmap(),
+                                            contentDescription = "Logo 预览",
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                        )
+                                    }
+                                }
+                                ActionButton(
+                                    text = if (hasLogoImage.value) "更换图标" else "选择图标",
+                                    bgColor = MiuixTheme.colorScheme.primary,
+                                    textColor = MiuixTheme.colorScheme.onPrimary,
+                                    onClick = {
+                                        logoImageLauncher.launch(arrayOf("image/*"))
+                                    }
+                                )
+                                if (hasLogoImage.value) {
+                                    ActionButton(
+                                        text = "清除",
+                                        bgColor = MiuixTheme.colorScheme.surface,
+                                        textColor = MiuixTheme.colorScheme.onSurface,
+                                        onClick = {
+                                            SymbolConfig.removeLogoImage(this@MainActivity)
+                                            hasLogoImage.value = false
+                                            this@MainActivity.logoImageVersion.value++
+                                            Toast.makeText(this@MainActivity, "已清除自定义图标", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "建议使用正方形透明 PNG 图标，重启键盘后生效",
+                                fontSize = 11.sp,
+                                color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -802,7 +915,7 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card {
                     BasicComponent(title = "模块名称", summary = "微信输入法上滑符号自定义")
-                    BasicComponent(title = "版本", summary = "1.1.3")
+                    BasicComponent(title = "版本", summary = "1.1.4")
                     BasicComponent(title = "作者", summary = "Rakurin Natsumi")
                     BasicComponent(
                         title = "GitHub",

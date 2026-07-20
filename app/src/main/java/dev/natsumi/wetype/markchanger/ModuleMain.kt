@@ -57,6 +57,11 @@ class ModuleMain : XposedModule() {
     // ---- 原始上滑符号缓存（用于仅同步模式查找功能码） ----
     private val originalFloatTextMap = HashMap<String, String>(52)
 
+    // ---- 自定义 Logo Bitmap 缓存 ----
+    @Volatile
+    private var cachedLogoBitmap: android.graphics.Bitmap? = null
+    private var cachedLogoImageHash: Int = 0
+
     private var fileWriter: FileWriter? = null
     private var logFilePath: String? = null
     private val logBuffer = mutableListOf<String>()
@@ -933,8 +938,35 @@ class ModuleMain : XposedModule() {
     }
 
     // ========================================================================
-    // Logo hide/replace - hook ImeCandidateView, hide image but keep clickable
+    // Logo hide/replace - hook ImeCandidateView, hide or replace logo image
     // ========================================================================
+
+    /** 解码自定义 Logo Bitmap（带缓存，Base64 hash 变化时重新解码） */
+    private fun getCachedLogoBitmap(): android.graphics.Bitmap? {
+        val base64 = remotePrefs?.getString(SymbolConfig.KEY_LOGO_IMAGE, null) ?: run {
+            logw(Log.WARN, "[Logo] getCachedLogoBitmap: logoImage key is null in prefs (prefs=${remotePrefs?.all?.keys?.joinToString(",")})")
+            cachedLogoBitmap = null
+            cachedLogoImageHash = 0
+            return null
+        }
+        logw(Log.INFO, "[Logo] getCachedLogoBitmap: base64 length=${base64.length}")
+        val hash = base64.hashCode()
+        if (hash == cachedLogoImageHash && cachedLogoBitmap != null) {
+            logw(Log.DEBUG, "[Logo] getCachedLogoBitmap: cache hit")
+            return cachedLogoBitmap
+        }
+        return try {
+            val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+            val bitmap = android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            cachedLogoBitmap = bitmap
+            cachedLogoImageHash = hash
+            logw(Log.INFO, "[Logo] Bitmap decoded: ${bitmap?.width}x${bitmap?.height}")
+            bitmap
+        } catch (e: Exception) {
+            logw(Log.WARN, "[Logo] Bitmap decode failed: ${e.message}", e)
+            null
+        }
+    }
 
     private fun hookLogoHide(classLoader: ClassLoader) {
         try {
@@ -955,47 +987,217 @@ class ModuleMain : XposedModule() {
                 val res = view.resources
                 var id = res.getIdentifier(resName, "id", view.context.packageName)
                 if (id == 0) id = res.getIdentifier(resName, "id", "com.tencent.wetype")
-                if (id == 0) return null
-                return view.findViewById(id)
+                if (id == 0) {
+                    logw(Log.WARN, "[Logo] findViewByRes: getIdentifier('$resName','id') returned 0! pkg=${view.context.packageName}")
+                    return null
+                }
+                val found = view.findViewById<android.view.View>(id)
+                if (found == null) {
+                    logw(Log.WARN, "[Logo] findViewByRes: id=$id found but findViewById returned null! view=${view.javaClass.simpleName}, childCount=${(view as? android.view.ViewGroup)?.childCount}")
+                }
+                return found
             }
 
-            fun isLogoHideEnabled(): Boolean {
+            /** 通过反射调用 getLogoIv() 获取 logo ImageView */
+            fun getLogoIvViaReflection(view: android.view.View): android.widget.ImageView? {
+                return try {
+                    val method = candidateViewClass.getDeclaredMethod("getLogoIv")
+                    method.isAccessible = true
+                    val iv = method.invoke(view) as? android.widget.ImageView
+                    logw(Log.INFO, "[Logo] getLogoIvViaReflection: $iv")
+                    iv
+                } catch (e: Exception) {
+                    logw(Log.WARN, "[Logo] getLogoIvViaReflection failed: ${e.message}")
+                    null
+                }
+            }
+
+            /** 递归遍历 View 树查找 ImageView（调试用） */
+            fun dumpViewHierarchy(view: android.view.View?, depth: Int = 0, maxDepth: Int = 5): String {
+                if (view == null || depth > maxDepth) return ""
+                val sb = StringBuilder()
+                val indent = "  ".repeat(depth)
+                val id = view.id
+                val idName = if (id != android.view.View.NO_ID) {
+                    try { view.resources.getResourceEntryName(id) } catch (_: Exception) { "id=$id" }
+                } else "no_id"
+                sb.appendLine("$indent[${view.javaClass.simpleName}] $idName vis=${view.visibility}")
+                if (view is android.view.ViewGroup) {
+                    for (i in 0 until view.childCount) {
+                        sb.append(dumpViewHierarchy(view.getChildAt(i), depth + 1, maxDepth))
+                    }
+                }
+                return sb.toString()
+            }
+
+            fun isLogoActionEnabled(): Boolean {
                 val mode = remotePrefs?.getInt(SymbolConfig.KEY_LOGO_MODE, SymbolConfig.LOGO_SHOW)
                     ?: SymbolConfig.LOGO_SHOW
                 return mode != SymbolConfig.LOGO_SHOW
             }
 
-            fun hideLogoContent(view: android.view.View) {
-                if (!isLogoHideEnabled()) return
-                val logoIv = findViewByRes(view, "logo_iv")
-                if (logoIv != null && logoIv.visibility != android.view.View.INVISIBLE) {
-                    logoIv.visibility = android.view.View.INVISIBLE
+            fun getLogoMode(): Int {
+                return remotePrefs?.getInt(SymbolConfig.KEY_LOGO_MODE, SymbolConfig.LOGO_SHOW)
+                    ?: SymbolConfig.LOGO_SHOW
+            }
+
+            /** 通过反射直接设置 ImageView 的 Drawable，绕过 setImageDrawable hook
+             *  解决与 WeType_UI_Enhanced 模块的兼容性问题（该模块 hook 了 setImageDrawable/setImageResource） */
+            fun setLogoBitmapDirectly(imageView: android.widget.ImageView, bitmap: android.graphics.Bitmap) {
+                val drawable = android.graphics.drawable.BitmapDrawable(imageView.resources, bitmap)
+                try {
+                    // 方式1：调用 private updateDrawable(Drawable) 方法
+                    val updateDrawableMethod = android.widget.ImageView::class.java
+                        .getDeclaredMethod("updateDrawable", android.graphics.drawable.Drawable::class.java)
+                    updateDrawableMethod.isAccessible = true
+
+                    // 清除 mResource，防止资源 ID 覆盖
+                    val mResourceField = android.widget.ImageView::class.java.getDeclaredField("mResource")
+                    mResourceField.isAccessible = true
+                    mResourceField.setInt(imageView, 0)
+
+                    // 清除 mUri
+                    try {
+                        val mUriField = android.widget.ImageView::class.java.getDeclaredField("mUri")
+                        mUriField.isAccessible = true
+                        mUriField.set(imageView, null)
+                    } catch (_: Exception) {}
+
+                    updateDrawableMethod.invoke(imageView, drawable)
+                    imageView.requestLayout()
+                    imageView.invalidate()
+                    logw(Log.INFO, "[Logo] setLogoBitmapDirectly: SUCCESS (via updateDrawable)")
+                } catch (e1: Exception) {
+                    logw(Log.WARN, "[Logo] updateDrawable reflection failed: ${e1.message}, trying field approach")
+                    // 方式2：直接设置 mDrawable 字段
+                    try {
+                        val mDrawableField = android.widget.ImageView::class.java.getDeclaredField("mDrawable")
+                        mDrawableField.isAccessible = true
+
+                        val oldDrawable = mDrawableField.get(imageView) as? android.graphics.drawable.Drawable
+                        oldDrawable?.setCallback(null)
+
+                        drawable.setCallback(imageView)
+                        drawable.setLayoutDirection(imageView.layoutDirection)
+                        drawable.setState(imageView.drawableState)
+                        drawable.setLevel(imageView.drawable?.level ?: 0)
+                        drawable.setVisible(imageView.visibility == android.view.View.VISIBLE, true)
+                        mDrawableField.set(imageView, drawable)
+
+                        val mResourceField = android.widget.ImageView::class.java.getDeclaredField("mResource")
+                        mResourceField.isAccessible = true
+                        mResourceField.setInt(imageView, 0)
+
+                        try {
+                            val mDrawableWidthField = android.widget.ImageView::class.java.getDeclaredField("mDrawableWidth")
+                            mDrawableWidthField.isAccessible = true
+                            mDrawableWidthField.setInt(imageView, drawable.intrinsicWidth)
+                            val mDrawableHeightField = android.widget.ImageView::class.java.getDeclaredField("mDrawableHeight")
+                            mDrawableHeightField.isAccessible = true
+                            mDrawableHeightField.setInt(imageView, drawable.intrinsicHeight)
+                        } catch (_: Exception) {}
+
+                        try {
+                            val configureBoundsMethod = android.widget.ImageView::class.java.getDeclaredMethod("configureBounds")
+                            configureBoundsMethod.isAccessible = true
+                            configureBoundsMethod.invoke(imageView)
+                        } catch (_: Exception) {}
+
+                        imageView.requestLayout()
+                        imageView.invalidate()
+                        logw(Log.INFO, "[Logo] setLogoBitmapDirectly: SUCCESS (via field)")
+                    } catch (e2: Exception) {
+                        logw(Log.WARN, "[Logo] field approach also failed: ${e2.message}, falling back to setImageBitmap")
+                        imageView.setImageBitmap(bitmap)
+                    }
                 }
+            }
+
+            /** 在 replace 模式下设置自定义 Logo 图片 */
+            fun applyLogoReplace(view: android.view.View) {
+                if (getLogoMode() != SymbolConfig.LOGO_REPLACE) return
+                // 方式1：通过资源名查找
+                var logoIv = findViewByRes(view, "logo_iv")
+                // 方式2：通过反射调用 getLogoIv()
+                if (logoIv == null) {
+                    logw(Log.INFO, "[Logo] findViewByRes failed, trying getLogoIv() reflection...")
+                    logoIv = getLogoIvViaReflection(view)
+                }
+                logw(Log.INFO, "[Logo] applyLogoReplace: logoIv=$logoIv, mode=${getLogoMode()}")
+                if (logoIv == null) {
+                    logw(Log.WARN, "[Logo] applyLogoReplace: logo_iv not found! Dumping view hierarchy:")
+                    logw(Log.WARN, dumpViewHierarchy(view))
+                    return
+                }
+                val bitmap = getCachedLogoBitmap()
+                logw(Log.INFO, "[Logo] applyLogoReplace: bitmap=$bitmap")
+                if (bitmap == null) {
+                    logw(Log.WARN, "[Logo] applyLogoReplace: bitmap is null, cannot replace!")
+                    return
+                }
+                if (logoIv.visibility != android.view.View.VISIBLE) {
+                    logoIv.visibility = android.view.View.VISIBLE
+                }
+                try {
+                    setLogoBitmapDirectly(logoIv as android.widget.ImageView, bitmap)
+                    logw(Log.INFO, "[Logo] applyLogoReplace: setLogoBitmapDirectly done")
+                } catch (e: Exception) {
+                    logw(Log.WARN, "[Logo] setLogoBitmapDirectly failed: ${e.message}")
+                }
+            }
+
+            fun applyLogoAction(view: android.view.View) {
+                val mode = getLogoMode()
+                logw(Log.INFO, "[Logo] applyLogoAction: mode=$mode")
+                if (mode == SymbolConfig.LOGO_SHOW) return
+                // 隐藏红点（hide 和 replace 模式都隐藏）
                 val redPoint = findViewByRes(view, "logo_red_point")
                 if (redPoint != null && redPoint.visibility != android.view.View.GONE) {
                     redPoint.visibility = android.view.View.GONE
                 }
+                if (mode == SymbolConfig.LOGO_REPLACE) {
+                    applyLogoReplace(view)
+                } else {
+                    // LOGO_HIDE 模式
+                    val logoIv = findViewByRes(view, "logo_iv")
+                    if (logoIv != null && logoIv.visibility != android.view.View.INVISIBLE) {
+                        logoIv.visibility = android.view.View.INVISIBLE
+                    }
+                }
             }
 
-            val a2Method = candidateViewClass.declaredMethods.find { m ->
+            // 列出所有 (boolean, boolean) 方法以诊断
+            val allBoolBoolMethods = candidateViewClass.declaredMethods.filter { m ->
                 m.parameterTypes.size == 2 &&
                     m.parameterTypes[0] == Boolean::class.javaPrimitiveType &&
                     m.parameterTypes[1] == Boolean::class.javaPrimitiveType
             }
+            logw(Log.INFO, "[Logo] Found ${allBoolBoolMethods.size} (boolean,boolean) methods: ${allBoolBoolMethods.joinToString { it.name }}}")
+
+            val a2Method = allBoolBoolMethods.firstOrNull()
             if (a2Method != null) {
                 a2Method.isAccessible = true
+                logw(Log.INFO, "[Logo] Hooking method: ${a2Method.name}(boolean,boolean)")
+                // 诊断：打印 prefs 状态
+                val modeAtInstall = remotePrefs?.getInt(SymbolConfig.KEY_LOGO_MODE, SymbolConfig.LOGO_SHOW) ?: SymbolConfig.LOGO_SHOW
+                val imgAtInstall = remotePrefs?.getString(SymbolConfig.KEY_LOGO_IMAGE, null)
+                logw(Log.INFO, "[Logo] Prefs at install: logoMode=$modeAtInstall, logoImage=${if (imgAtInstall != null) "present(len=${imgAtInstall.length})" else "null"}, allKeys=${remotePrefs?.all?.keys?.joinToString(",")}")
                 hook(a2Method)
                     .setExceptionMode(ExceptionMode.PROTECTIVE)
                     .intercept(object : Hooker {
                         override fun intercept(chain: Chain): Any? {
+                            logw(Log.INFO, "[Logo] a2 hook triggered! mode=${getLogoMode()}")
                             val result = chain.proceed()
-                            val view = chain.getThisObject() as? android.view.View ?: return result
-                            hideLogoContent(view)
-                            view.post { hideLogoContent(view) }
+                            val view = chain.getThisObject() as? android.view.View ?: run {
+                                logw(Log.WARN, "[Logo] a2: thisObject is not a View")
+                                return result
+                            }
+                            applyLogoAction(view)
+                            view.post { applyLogoAction(view) }
                             return result
                         }
                     })
-                logw(Log.INFO, "[OK] Hooked init(boolean,boolean) for logo hide")
+                logw(Log.INFO, "[OK] Hooked init(boolean,boolean) for logo hide/replace")
             } else {
                 logw(Log.WARN, "Cannot find a2(boolean,boolean) on ImeCandidateView")
             }
@@ -1014,15 +1216,34 @@ class ModuleMain : XposedModule() {
                         .intercept(object : Hooker {
                             override fun intercept(chain: Chain): Any? {
                                 val result = chain.proceed()
-                                if (!isLogoHideEnabled()) return result
+                                val mode = getLogoMode()
+                                if (mode == SymbolConfig.LOGO_SHOW) return result
                                 val iv = result as? android.view.View ?: return result
-                                if (iv.visibility != android.view.View.INVISIBLE) {
-                                    iv.visibility = android.view.View.INVISIBLE
+                                if (mode == SymbolConfig.LOGO_HIDE) {
+                                    if (iv.visibility != android.view.View.INVISIBLE) {
+                                        iv.visibility = android.view.View.INVISIBLE
+                                    }
+                                } else if (mode == SymbolConfig.LOGO_REPLACE) {
+                                    logw(Log.INFO, "[Logo] getLogoIv hook: REPLACE mode, setting bitmap")
+                                    if (iv.visibility != android.view.View.VISIBLE) {
+                                        iv.visibility = android.view.View.VISIBLE
+                                    }
+                                    val bitmap = getCachedLogoBitmap()
+                                    if (bitmap != null) {
+                                        try {
+                                            setLogoBitmapDirectly(iv as android.widget.ImageView, bitmap)
+                                            logw(Log.INFO, "[Logo] getLogoIv hook: setLogoBitmapDirectly done")
+                                        } catch (e: Exception) {
+                                            logw(Log.WARN, "[Logo] getLogoIv hook: setLogoBitmapDirectly failed: ${e.message}")
+                                        }
+                                    } else {
+                                        logw(Log.WARN, "[Logo] getLogoIv hook: bitmap is null!")
+                                    }
                                 }
                                 return result
                             }
                         })
-                    logw(Log.INFO, "[OK] Hooked ${getLogoIvMethod.name}() for logo hide (INVISIBLE)")
+                    logw(Log.INFO, "[OK] Hooked ${getLogoIvMethod.name}() for logo (${if (getLogoMode() == SymbolConfig.LOGO_REPLACE) "REPLACE" else "HIDE"})")
                 } else {
                     logw(Log.WARN, "getLogoIv() not found by name or feature")
                 }
@@ -1045,7 +1266,7 @@ class ModuleMain : XposedModule() {
                         .intercept(object : Hooker {
                             override fun intercept(chain: Chain): Any? {
                                 val result = chain.proceed()
-                                if (!isLogoHideEnabled()) return result
+                                if (!isLogoActionEnabled()) return result
                                 val rp = result as? android.view.View ?: return result
                                 if (rp.visibility != android.view.View.GONE) {
                                     rp.visibility = android.view.View.GONE
@@ -1053,12 +1274,70 @@ class ModuleMain : XposedModule() {
                                 return result
                             }
                         })
-                    logw(Log.INFO, "[OK] Hooked ${getLogoRedPointMethod.name}() for logo hide")
+                    logw(Log.INFO, "[OK] Hooked ${getLogoRedPointMethod.name}() for logo hide/replace")
                 } else {
                     logw(Log.WARN, "getLogoRedPoint() not found by name or feature")
                 }
             } catch (e: Throwable) {
                 logw(Log.WARN, "getLogoRedPoint hook failed: ${e.message}")
+            }
+
+            // 兜底：Hook onAttachedToWindow - 键盘显示时确保替换 Logo
+            // 处理 a2 在 hook 安装前已调用的情况（视图已缓存）
+            try {
+                val onAttachedMethod = candidateViewClass.getDeclaredMethod("onAttachedToWindow")
+                onAttachedMethod.isAccessible = true
+                hook(onAttachedMethod)
+                    .setExceptionMode(ExceptionMode.PROTECTIVE)
+                    .intercept(object : Hooker {
+                        override fun intercept(chain: Chain): Any? {
+                            val result = chain.proceed()
+                            val view = chain.getThisObject() as? android.view.View ?: return result
+                            val mode = getLogoMode()
+                            if (mode == SymbolConfig.LOGO_SHOW) return result
+                            logw(Log.INFO, "[Logo] onAttachedToWindow: mode=$mode")
+                            view.postDelayed({
+                                logw(Log.INFO, "[Logo] onAttachedToWindow postDelayed: applying logo action")
+                                applyLogoAction(view)
+                            }, 100)
+                            view.postDelayed({ applyLogoAction(view) }, 500)
+                            return result
+                        }
+                    })
+                logw(Log.INFO, "[OK] Hooked ImeCandidateView.onAttachedToWindow for logo fallback")
+            } catch (e: Throwable) {
+                logw(Log.WARN, "onAttachedToWindow hook failed: ${e.message}")
+            }
+
+            // 兜底：Hook onWindowShown - 每次键盘显示时替换 Logo
+            try {
+                val onWindowShownMethod = candidateViewClass.declaredMethods.find { it.name == "onWindowShown" }
+                if (onWindowShownMethod != null) {
+                    onWindowShownMethod.isAccessible = true
+                    hook(onWindowShownMethod)
+                        .setExceptionMode(ExceptionMode.PROTECTIVE)
+                        .intercept(object : Hooker {
+                            override fun intercept(chain: Chain): Any? {
+                                val result = chain.proceed()
+                                val view = chain.getThisObject() as? android.view.View ?: return result
+                                val mode = getLogoMode()
+                                if (mode == SymbolConfig.LOGO_SHOW) return result
+                                logw(Log.INFO, "[Logo] onWindowShown: mode=$mode")
+                                view.postDelayed({
+                                    logw(Log.INFO, "[Logo] onWindowShown postDelayed: applying logo action")
+                                    applyLogoAction(view)
+                                }, 100)
+                                view.postDelayed({ applyLogoAction(view) }, 500)
+                                view.postDelayed({ applyLogoAction(view) }, 2000)
+                                return result
+                            }
+                        })
+                    logw(Log.INFO, "[OK] Hooked ImeCandidateView.onWindowShown for logo fallback")
+                } else {
+                    logw(Log.WARN, "onWindowShown method not found on ImeCandidateView")
+                }
+            } catch (e: Throwable) {
+                logw(Log.WARN, "onWindowShown hook failed: ${e.message}")
             }
 
         } catch (e: Throwable) {

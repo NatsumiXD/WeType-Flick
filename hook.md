@@ -8,13 +8,13 @@
 
 | 目标 | 已知全名（快速路径） | 特征匹配规则 |
 |------|----------------------|-------------|
-| 按钮类 (ImeButton) | `selfdraw.j` | 2+ 个 `()→String` 方法 + 1 个 `(String)→void` 方法 |
+| 按钮类 (ImeButton) | `selfdraw.j` | 2+ 个 `()->String` 方法 + 1 个 `(String)->void` 方法 |
 | 键盘类 (KeyboardView) | `selfdraw.n` | 拥有 `getKeyboardType()` 方法（返回非 void） |
 | MoreSymbolUtil | `utils.j0` | 静态自身类型字段（单例）+ 2 个同参数类型返回 List 的方法 |
 | SymbolFloatData | `floatview.C` | 10 参数构造器 + String 类型字段 |
-| ImeCandidateView | `ImeCandidateView` | 拥有 `(boolean, boolean)→?` 方法 |
+| ImeCandidateView | `ImeCandidateView` | 拥有 `(boolean, boolean)->?` 方法 |
 
-**查找流程**：先尝试已知全名（快速路径）→ 失败则扫描包下所有短名称类（a-z, 0-9, aa-zz, a0-z9）→ 按特征签名匹配。
+**查找流程**：先尝试已知全名（快速路径）-> 失败则扫描包下所有短名称类（a-z, 0-9, aa-zz, a0-z9）-> 按特征签名匹配。
 
 ## Hook 列表
 
@@ -55,13 +55,13 @@
 ```
 类: 通过 2 个无参 String 方法 + 1 个 String 参数 void 方法特征发现（原 selfdraw.j）
 方法: H0(String) (混淆名) / setFloatText(String)
-参数: String — 原始上滑符号
+参数: String - 原始上滑符号
 时机: 每次设置按钮上滑符号时
 作用:
   1. 缓存原始上滑符号到 originalFloatTextMap（用于仅同步模式）
   2. 查找自定义符号并设置到 floatText 字段
   3. 更新 symbolCache 缓存
-流程: proceed() → 获取 mainText → 查自定义符号 → Field.set(floatText, custom)
+流程: proceed() -> 获取 mainText -> 查自定义符号 -> Field.set(floatText, custom)
 ```
 
 ### 4. v() / getFloatText（上滑符号读取）
@@ -69,19 +69,19 @@
 ```
 类: 通过 2 个无参 String 方法 + 1 个 String 参数 void 方法特征发现（原 selfdraw.j）
 方法: v() (混淆名) / getFloatText()
-返回: String — 上滑符号
+返回: String - 上滑符号
 时机: 每次读取按钮上滑符号时（热路径）
 作用:
   快速路径: symbolCache 命中直接返回
-  慢速路径: 调用原方法 → 查自定义符号 → 缓存并返回
+  慢速路径: 调用原方法 -> 查自定义符号 -> 缓存并返回
 ```
 
 ### 5-6. k() / l()（长按弹窗符号列表）
 
 ```
 类: 通过单例字段 + 同参数类型 List 方法特征发现（原 utils.j0）
-方法: k(ImeButton) — 小写 QWERTY 长按符号
-      l(ImeButton) — 大写 QWERTY 长按符号
+方法: k(ImeButton) - 小写 QWERTY 长按符号
+      l(ImeButton) - 大写 QWERTY 长按符号
 返回: List<SymbolFloatData>
 时机: 长按字母键弹出符号选择时
 作用:
@@ -113,25 +113,34 @@
   4. 返回 true 阻止原调用
 ```
 
-### 8. ImeCandidateView（Logo 隐藏）
+### 8. ImeCandidateView（Logo 隐藏/替换）
 
 ```
 类: 通过 (boolean, boolean) 方法特征发现（原 ImeCandidateView）
 方法: a2(boolean isDarkMode, boolean standaloneMode)
 时机: 候选栏视图初始化/更新时
-作用: 原方法设置 Logo 图标，Hook 后根据设置隐藏 Logo
-流程: proceed() → 检查 logoMode → 找到 logo_container_rl → 设 GONE
+作用: 原方法通过 logoIv.setImageResource() 设置 Logo 图标，Hook 后根据设置隐藏或替换 Logo
+模式:
+  - LOGO_SHOW (0): 默认，不干预
+  - LOGO_HIDE (1): 隐藏 logo_iv (INVISIBLE)，隐藏红点 (GONE)
+  - LOGO_REPLACE (2): 保持 logo_iv VISIBLE，用自定义 Bitmap 替换图标
+流程:
+  LOGO_HIDE: proceed() -> 检查 logoMode -> 找到 logo_iv -> 设 INVISIBLE
+  LOGO_REPLACE: proceed() -> 检查 logoMode -> 解码 Base64 Bitmap -> setImageBitmap
+自定义图标存储: SharedPreferences key="logoImage"，值为 Base64 编码的 PNG
 ```
 
 ## 内存数据结构
 
 ```
-cnSymbols:           HashMap<String, String>    — 中文上滑符号表 (a→@)
-enSymbols:           HashMap<String, String>    — 英文上滑符号表 (a→@)
-cnLongSymbols:       HashMap<String, List<String>> — 中文长按符号表 (a→[, A, à, ...])
-enLongSymbols:       HashMap<String, List<String>> — 英文长按符号表
-originalFloatTextMap: HashMap<String, String>   — 原始上滑符号 (a→a)
-symbolCache:         WeakHashMap<Any, String?>   — 按钮实例→自定义符号缓存
-mainTextCache:       WeakHashMap<Any, String>    — 按钮实例→mainText 缓存
-highLightSet:        HashSet<String>             — 长按弹窗默认选中符号集合
+cnSymbols:           HashMap<String, String>    - 中文上滑符号表 (a->@)
+enSymbols:           HashMap<String, String>    - 英文上滑符号表 (a->@)
+cnLongSymbols:       HashMap<String, List<String>> - 中文长按符号表 (a->[, A, à, ...])
+enLongSymbols:       HashMap<String, List<String>> - 英文长按符号表
+originalFloatTextMap: HashMap<String, String>   - 原始上滑符号 (a->a)
+symbolCache:         WeakHashMap<Any, String?>   - 按钮实例->自定义符号缓存
+mainTextCache:       WeakHashMap<Any, String>    - 按钮实例->mainText 缓存
+highLightSet:        HashSet<String>             - 长按弹窗默认选中符号集合
+cachedLogoBitmap:    Bitmap?                     - 自定义 Logo Bitmap 缓存
+cachedLogoImageHash: Int                         - Logo Base64 hash（用于检测变化）
 ```

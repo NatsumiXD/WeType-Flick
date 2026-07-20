@@ -2,9 +2,7 @@
 
 [仓库](https://github.com/NatsumiXD/WeType-Flick)
 
-微信输入法符号自定义模块（Xposed/LSPosed），支持自定义上滑符号、长按弹出符号、长按延迟、Logo 显示/隐藏等。
-
-Logo功能还没实现
+微信输入法符号自定义模块（Xposed/LSPosed），支持自定义上滑符号、长按弹出符号、长按延迟、Logo 显示/隐藏/替换等。
 
 日志文件文件导出
 
@@ -24,8 +22,9 @@ adb pull /sdcard/Android/data/com.tencent.wetype/files/WeTypeMarkChanger.log
 | 中英文独立配置 | 分别设置中文/英文键盘的符号 |
 | 长按延迟调节 | 100ms ~ 1000ms（50ms步进），替代硬编码500ms |
 | Logo 隐藏 | 隐藏键盘左上角微信输入法 Logo |
+| Logo 替换 | 使用自定义图标替换微信输入法 Logo |
 | 内置预设 | 搜狗输入法、Gboard、豆包输入法 |
-| JSON 导入/导出 | 完整配置导入导出（v2格式，含长按符号、延迟、Logo） |
+| JSON 导入/导出 | 完整配置导入导出（v2格式，含长按符号、延迟、Logo、Logo图标） |
 | WebDAV 同步 | 多设备配置同步 |
 
 ## 构建方法
@@ -83,12 +82,12 @@ app/src/main/java/dev/natsumi/wetype/markchanger/
 | `MoreSymbolUtil.l()` | 同上 | 替换长按弹窗符号列表（大写） |
 | `HighLightSymbol` (HashSet) | 同上 | 注入自定义符号到高亮集合 |
 | `Handler.sendMessageDelayed()` | Android SDK | 替换长按延迟时间 |
-| `ImeCandidateView.a2()` | `com.tencent.wetype.plugin.hld.candidate.ImeCandidateView` | 隐藏左上角 Logo |
+| `ImeCandidateView.a2()` | `com.tencent.wetype.plugin.hld.candidate.ImeCandidateView` | 隐藏/替换左上角 Logo |
 
 #### SymbolConfig.kt — 配置管理
 
 - **存储格式**: SharedPreferences (`swipe_symbols`)
-- **键值格式**: `cn_a`/`en_a`（上滑），`cn_long_a`/`en_long_a`（长按），`longPressDelay`（延迟），`logoMode`（Logo）
+- **键值格式**: `cn_a`/`en_a`（上滑），`cn_long_a`/`en_long_a`（长按），`longPressDelay`（延迟），`logoMode`（Logo），`logoImage`（Logo图标Base64）
 - **JSON v2 格式**: 包含 `version`、`cn`、`en`、`cnLong`、`enLong`、`longPressDelay`、`logoMode`
 - **预设**: `sogou`（搜狗）、`gboard`（Gboard）、`doubao`（豆包）
 
@@ -99,7 +98,7 @@ app/src/main/java/dev/natsumi/wetype/markchanger/
 - 上滑/长按模式切换
 - 仅同步上滑符号开关
 - 长按延迟滑块
-- Logo 显示/隐藏
+- Logo 显示/隐藏/替换（含自定义图标选择）
 - JSON/WebDAV/预设 管理
 
 ## 技术细节

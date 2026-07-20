@@ -13,6 +13,7 @@ object SymbolConfig {
     const val KEY_LONG_PRESS_DELAY = "longPressDelay"
     const val DEFAULT_LONG_PRESS_DELAY = 500L
     const val KEY_LOGO_MODE = "logoMode"
+    const val KEY_LOGO_IMAGE = "logoImage"
     const val LOGO_SHOW = 0
     const val LOGO_HIDE = 1
     const val LOGO_REPLACE = 2
@@ -165,6 +166,17 @@ object SymbolConfig {
         getPrefs(context).edit().putInt(KEY_LOGO_MODE, mode).apply()
     }
 
+    fun getLogoImage(context: Context): String? =
+        getPrefs(context).getString(KEY_LOGO_IMAGE, null)
+
+    fun setLogoImage(context: Context, base64: String) {
+        getPrefs(context).edit().putString(KEY_LOGO_IMAGE, base64).apply()
+    }
+
+    fun removeLogoImage(context: Context) {
+        getPrefs(context).edit().remove(KEY_LOGO_IMAGE).apply()
+    }
+
     // ========================================================================
     // SharedPreferences
     // ========================================================================
@@ -312,6 +324,7 @@ object SymbolConfig {
         json.put("enLong", JSONObject(getAllLongPress(context, EN)))
         json.put("longPressDelay", getLongPressDelay(context))
         json.put("logoMode", getLogoMode(context))
+        getLogoImage(context)?.let { json.put("logoImage", it) }
         return json.toString(2)
     }
 
@@ -355,6 +368,12 @@ object SymbolConfig {
             }
             val logoMode = json.optInt("logoMode", LOGO_SHOW)
             editor.putInt(KEY_LOGO_MODE, logoMode)
+            val logoImage = json.optString("logoImage", "")
+            if (logoImage.isNotEmpty()) {
+                editor.putString(KEY_LOGO_IMAGE, logoImage)
+            } else {
+                editor.remove(KEY_LOGO_IMAGE)
+            }
         }
 
         editor.apply()
@@ -394,6 +413,12 @@ object SymbolConfig {
         }
         val logoMode = json.optInt("logoMode", LOGO_SHOW)
         editor.putInt(KEY_LOGO_MODE, logoMode)
+        val logoImage = json.optString("logoImage", "")
+        if (logoImage.isNotEmpty()) {
+            editor.putString(KEY_LOGO_IMAGE, logoImage)
+        } else {
+            editor.remove(KEY_LOGO_IMAGE)
+        }
 
         editor.apply()
         count
