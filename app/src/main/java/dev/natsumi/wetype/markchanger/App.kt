@@ -13,6 +13,8 @@ class App : Application() {
             override fun onServiceBind(service: XposedService) {
                 Log.i(TAG, "Xposed service bind: ${service.getFrameworkName()} (${service.getFrameworkVersion()}) API ${service.getApiVersion()}")
                 XposedServiceManager.service = service
+                try { SymbolConfig.onServiceConnected(this@App) }
+                catch (failure: Exception) { Log.e(TAG, "Saved configuration sync failed", failure) }
             }
 
             override fun onServiceDied(service: XposedService) {

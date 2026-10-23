@@ -1,5 +1,8 @@
 *.iml
 .gradle
+.gradle-local/
+.baseline-preview/
+/dist/
 /local.properties
 /.idea/caches
 /.idea/libraries

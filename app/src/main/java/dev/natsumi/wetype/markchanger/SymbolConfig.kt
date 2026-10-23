@@ -20,6 +20,8 @@ object SymbolConfig {
 
     const val CN = "cn"
     const val EN = "en"
+    const val T9 = "t9"
+    const val KEY_SWAP_LANGUAGE_NUMBER = "swapLanguageNumber"
     const val CN_LONG = "cnLong"
     const val EN_LONG = "enLong"
 
@@ -68,11 +70,20 @@ object SymbolConfig {
         "z" to "@"
     )
 
+    val DEFAULT_SYMBOLS_T9 = (1..9).associate { it.toString() to it.toString() }
+    val DEFAULT_LONG_PRESS_T9 = mapOf(
+        "1" to "/,-,_,1,@,#,&", "2" to "a,b,c,2,A,B,C", "3" to "d,e,f,3,D,E,F",
+        "4" to "g,h,i,4,G,H,I", "5" to "j,k,l,5,J,K,L", "6" to "m,n,o,6,M,N,O",
+        "7" to "p,q,r,s,7,P,Q,R,S", "8" to "t,u,v,8,T,U,V", "9" to "w,x,y,z,9,W,X,Y,Z")
+
+    fun keys(keyboardType: String): List<String> =
+        if (keyboardType == T9) DEFAULT_SYMBOLS_T9.keys.toList() else LETTERS.map { it.toString() }
+
     fun getDefaultSymbols(keyboardType: String): Map<String, String> =
-        if (keyboardType == EN) DEFAULT_SYMBOLS_EN else DEFAULT_SYMBOLS_CN
+        when (keyboardType) { EN -> DEFAULT_SYMBOLS_EN; T9 -> DEFAULT_SYMBOLS_T9; else -> DEFAULT_SYMBOLS_CN }
 
     fun getDefaultLongPressSymbols(keyboardType: String): Map<String, String> =
-        if (keyboardType == EN) DEFAULT_LONG_PRESS_EN else DEFAULT_LONG_PRESS_CN
+        when (keyboardType) { EN -> DEFAULT_LONG_PRESS_EN; T9 -> DEFAULT_LONG_PRESS_T9; else -> DEFAULT_LONG_PRESS_CN }
 
     // ========================================================================
     // 预设方案
@@ -159,6 +170,13 @@ object SymbolConfig {
         getPrefs(context).edit().putLong(KEY_LONG_PRESS_DELAY, delay).apply()
     }
 
+    fun isSwapLanguageNumber(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_SWAP_LANGUAGE_NUMBER, false)
+
+    fun setSwapLanguageNumber(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SWAP_LANGUAGE_NUMBER, enabled).apply()
+    }
+
     fun getLogoMode(context: Context): Int =
         getPrefs(context).getInt(KEY_LOGO_MODE, LOGO_SHOW)
 
@@ -181,50 +199,20 @@ object SymbolConfig {
     // SharedPreferences
     // ========================================================================
 
-    fun getPrefs(context: Context): SharedPreferences {
-        val service = XposedServiceManager.service
-        return if (service != null) {
-            try {
-                service.getRemotePreferences(PREFS_NAME)
-            } catch (e: Exception) {
-                context.getFallbackPrefs()
-            }
-        } else {
-            context.getFallbackPrefs()
-        }
+    @Volatile private var configurationStore: ConfigurationStore? = null
+
+    @Synchronized
+    private fun store(context: Context): ConfigurationStore = configurationStore ?: context.applicationContext.let { app ->
+        ConfigurationStore(app.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE),
+            app.getSharedPreferences("${PREFS_NAME}_draft", Context.MODE_PRIVATE),
+            { XposedServiceManager.service?.getRemotePreferences(PREFS_NAME) }).also { configurationStore = it }
     }
 
-    private fun Context.getFallbackPrefs(): SharedPreferences {
-        return getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    }
-
-    fun syncLocalToRemote(context: Context) {
-        val service = XposedServiceManager.service ?: return
-        try {
-            val local = context.getFallbackPrefs()
-            val remote = service.getRemotePreferences(PREFS_NAME)
-            val localAll = local.all
-            if (localAll.isNotEmpty()) {
-                val editor = remote.edit()
-                for ((key, value) in localAll) {
-                    when (value) {
-                        is String -> editor.putString(key, value)
-                        is Int -> editor.putInt(key, value)
-                        is Boolean -> editor.putBoolean(key, value)
-                        is Long -> editor.putLong(key, value)
-                        is Float -> editor.putFloat(key, value)
-                        is Set<*> -> {
-                            @Suppress("UNCHECKED_CAST")
-                            editor.putStringSet(key, value as Set<String>)
-                        }
-                    }
-                }
-                editor.apply()
-                local.edit().clear().apply()
-            }
-        } catch (_: Exception) {
-        }
-    }
+    fun initialize(context: Context) { store(context).initialize() }
+    fun getPrefs(context: Context): SharedPreferences = store(context).also { it.initialize() }.draft
+    fun saveAndReload(context: Context): Result<Boolean> = runCatching { store(context).save().published }
+    fun hasUnsavedChanges(context: Context): Boolean = store(context).hasUnsavedChanges()
+    fun onServiceConnected(context: Context) { store(context).onServiceConnected() }
 
     private fun prefKey(keyboardType: String, letter: String): String =
         "${keyboardType}_${letter.lowercase()}"
@@ -242,7 +230,7 @@ object SymbolConfig {
     }
 
     fun resetAll(context: Context) {
-        getPrefs(context).edit().clear().apply()
+        store(context).clearDraft()
     }
 
     fun resetKeyboard(context: Context, keyboardType: String) {
@@ -317,11 +305,15 @@ object SymbolConfig {
 
     fun exportToJson(context: Context): String {
         val json = JSONObject()
-        json.put("version", 2)
+        json.put("version", 3)
         json.put("cn", JSONObject(getAll(context, CN)))
         json.put("en", JSONObject(getAll(context, EN)))
         json.put("cnLong", JSONObject(getAllLongPress(context, CN)))
         json.put("enLong", JSONObject(getAllLongPress(context, EN)))
+        json.put("t9", JSONObject(getAll(context, T9)))
+        json.put("t9Long", JSONObject(getAllLongPress(context, T9)))
+        json.put(KEY_SWAP_LANGUAGE_NUMBER, isSwapLanguageNumber(context))
+        json.put(KEY_SYNC_SWIPE_ONLY, isSyncSwipeOnly(context))
         json.put("longPressDelay", getLongPressDelay(context))
         json.put("logoMode", getLogoMode(context))
         getLogoImage(context)?.let { json.put("logoImage", it) }
@@ -331,12 +323,12 @@ object SymbolConfig {
     fun importFromJson(context: Context, jsonStr: String): Result<Int> = runCatching {
         val json = JSONObject(jsonStr)
         val version = json.optInt("version", 1)
-        if (version < 1 || version > 2) throw IllegalArgumentException("不支持的版本: $version")
+        if (version < 1 || version > 3) throw IllegalArgumentException("不支持的版本: $version")
 
         var count = 0
         val editor = getPrefs(context).edit()
 
-        for (type in listOf(CN, EN)) {
+        for (type in listOf(CN, EN, T9)) {
             val obj = json.optJSONObject(type) ?: continue
             val keys = obj.keys()
             while (keys.hasNext()) {
@@ -350,7 +342,7 @@ object SymbolConfig {
         }
 
         if (version >= 2) {
-            for (type in listOf(CN, EN)) {
+            for (type in listOf(CN, EN, T9)) {
                 val obj = json.optJSONObject("${type}Long") ?: continue
                 val keys = obj.keys()
                 while (keys.hasNext()) {
@@ -376,6 +368,8 @@ object SymbolConfig {
             }
         }
 
+        if (json.has(KEY_SWAP_LANGUAGE_NUMBER)) editor.putBoolean(KEY_SWAP_LANGUAGE_NUMBER, json.optBoolean(KEY_SWAP_LANGUAGE_NUMBER))
+        if (json.has(KEY_SYNC_SWIPE_ONLY)) editor.putBoolean(KEY_SYNC_SWIPE_ONLY, json.optBoolean(KEY_SYNC_SWIPE_ONLY))
         editor.apply()
         count
     }
@@ -385,7 +379,7 @@ object SymbolConfig {
         var count = 0
         val editor = getPrefs(context).edit()
 
-        for (type in listOf(CN, EN)) {
+        for (type in listOf(CN, EN, T9)) {
             val obj = json.optJSONObject(type) ?: continue
             val keys = obj.keys()
             while (keys.hasNext()) {
@@ -420,6 +414,8 @@ object SymbolConfig {
             editor.remove(KEY_LOGO_IMAGE)
         }
 
+        if (json.has(KEY_SWAP_LANGUAGE_NUMBER)) editor.putBoolean(KEY_SWAP_LANGUAGE_NUMBER, json.optBoolean(KEY_SWAP_LANGUAGE_NUMBER))
+        if (json.has(KEY_SYNC_SWIPE_ONLY)) editor.putBoolean(KEY_SYNC_SWIPE_ONLY, json.optBoolean(KEY_SYNC_SWIPE_ONLY))
         editor.apply()
         count
     }

@@ -8,18 +8,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +28,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -44,6 +40,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -53,6 +50,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,14 +67,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -79,6 +82,7 @@ import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.Slider
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.SmallTopAppBar
 import top.yukonga.miuix.kmp.basic.TabRow
@@ -86,6 +90,7 @@ import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.theme.ColorSchemeMode
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import java.io.InputStreamReader
 import kotlin.math.roundToLong
 
@@ -93,8 +98,8 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         private val QWERTY_ROWS = listOf("qwertyuiop", "asdfghjkl", "zxcvbnm")
-        private val KEYBOARD_LABELS = listOf("中文键盘", "英文键盘")
-        private val KEYBOARD_TYPES = listOf(SymbolConfig.CN, SymbolConfig.EN)
+        private val KEYBOARD_LABELS = listOf("中文 26 键", "英文 26 键", "中文九键")
+        private val KEYBOARD_TYPES = listOf(SymbolConfig.CN, SymbolConfig.EN, SymbolConfig.T9)
         private val LONG_PRESS_KEY = "longPress"
 
         private val NAV_ITEMS = listOf(
@@ -106,6 +111,10 @@ class MainActivity : ComponentActivity() {
 
     private var pendingExportJson: String? = null
     private val logoImageVersion = mutableStateOf(0)
+    private val configurationVersion = mutableIntStateOf(0)
+    private val draftListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        runOnUiThread { configurationVersion.intValue++ }
+    }
 
     private val exportLauncher = registerForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -129,7 +138,7 @@ class MainActivity : ComponentActivity() {
                     InputStreamReader(isr, Charsets.UTF_8).readText()
                 } ?: return@let
                 val count = SymbolConfig.importFromJson(this, json).getOrThrow()
-                Toast.makeText(this, "导入成功，共 $count 条符号", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "已导入草稿，共 $count 条符号，请点击保存", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(this, "导入失败: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -178,7 +187,7 @@ class MainActivity : ComponentActivity() {
 
             SymbolConfig.setLogoImage(this, base64)
             logoImageVersion.value++
-            Toast.makeText(this, "Logo 图标已设置，重启键盘生效", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Logo 图标已暂存，点击保存后生效", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, "处理图片失败: ${e.message}", Toast.LENGTH_SHORT).show()
         }
@@ -187,14 +196,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        SymbolConfig.syncLocalToRemote(this)
+        SymbolConfig.initialize(this)
+        SymbolConfig.getPrefs(this).registerOnSharedPreferenceChangeListener(draftListener)
 
         setContent {
             val controller = remember { ThemeController(ColorSchemeMode.System) }
             MiuixTheme(controller = controller) {
-                MainScreen()
+                CompositionLocalProvider(LocalAppleMotion provides rememberMotionEnabled()) {
+                    MainScreen()
+                }
             }
         }
+    }
+
+    override fun onDestroy() {
+        SymbolConfig.getPrefs(this).unregisterOnSharedPreferenceChangeListener(draftListener)
+        super.onDestroy()
     }
 
     // ========================================================================
@@ -203,21 +220,45 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun MainScreen() {
-        var selectedNav by remember { mutableIntStateOf(0) }
+        val configVersion = configurationVersion.intValue
+        val scope = rememberCoroutineScope()
+        var saving by remember { mutableStateOf(false) }
+        val pending = remember(configVersion, saving) { SymbolConfig.hasUnsavedChanges(this@MainActivity) }
+        var selectedNav by rememberSaveable { mutableIntStateOf(0) }
+        val pageState = rememberSaveableStateHolder()
+        val motion = LocalAppleMotion.current
 
         Scaffold(
+            modifier = Modifier.fillMaxSize().imePadding(),
             topBar = {
                 SmallTopAppBar(title = "微信输入法上滑符号")
             },
             bottomBar = {
-                NavigationBar {
-                    NAV_ITEMS.forEachIndexed { index, (label, icon, _) ->
-                        NavigationBarItem(
-                            selected = selectedNav == index,
-                            onClick = { selectedNav = index },
-                            icon = icon,
-                            label = label
-                        )
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(if (pending) "有未保存修改" else "已持久化保存", fontSize = 12.sp,
+                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                        ActionButton(if (saving) "正在保存…" else "保存并热重载", MiuixTheme.colorScheme.primary,
+                            MiuixTheme.colorScheme.onPrimary) {
+                            if (!saving) {
+                                saving = true
+                                scope.launch {
+                                    val result = withContext(Dispatchers.IO) { SymbolConfig.saveAndReload(this@MainActivity) }
+                                    saving = false
+                                    configurationVersion.intValue++
+                                    val message = result.fold(
+                                        onSuccess = { published -> if (published) "已持久化保存并热重载" else "已本地保存，框架连接后应用" },
+                                        onFailure = { "保存失败：${it.message}" })
+                                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    }
+                    NavigationBar {
+                        NAV_ITEMS.forEachIndexed { index, (label, icon, _) ->
+                            NavigationBarItem(selected = selectedNav == index, onClick = { selectedNav = index }, icon = icon, label = label)
+                        }
                     }
                 }
             }
@@ -226,20 +267,16 @@ class MainActivity : ComponentActivity() {
                 targetState = selectedNav,
                 modifier = Modifier.fillMaxSize(),
                 transitionSpec = {
-                    if (targetState > initialState) {
-                        (slideInHorizontally { it / 4 } + fadeIn(tween(200)))
-                            .togetherWith(slideOutHorizontally { -it / 4 } + fadeOut(tween(200)))
-                    } else {
-                        (slideInHorizontally { -it / 4 } + fadeIn(tween(200)))
-                            .togetherWith(slideOutHorizontally { it / 4 } + fadeOut(tween(200)))
-                    }
+                    fadeIn(tween(if (motion) 180 else 0)).togetherWith(fadeOut(tween(if (motion) 120 else 0)))
                 },
                 label = "page"
             ) { page ->
-                when (page) {
-                    0 -> SymbolsPage(paddingValues)
-                    1 -> DataManagePage(paddingValues)
-                    2 -> AboutPage(paddingValues)
+                pageState.SaveableStateProvider(page) {
+                    when (page) {
+                        0 -> SymbolsPage(paddingValues)
+                        1 -> DataManagePage(paddingValues)
+                        2 -> AboutPage(paddingValues)
+                    }
                 }
             }
         }
@@ -252,10 +289,11 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun SymbolsPage(padding: PaddingValues) {
         val context = LocalContext.current
-        var selectedTab by remember { mutableIntStateOf(0) }
-        var selectedMode by remember { mutableIntStateOf(0) }
-        var syncSwipeOnly by remember { mutableStateOf(SymbolConfig.isSyncSwipeOnly(context)) }
-        var longPressDelay by remember { mutableLongStateOf(SymbolConfig.getLongPressDelay(context)) }
+        val configVersion = configurationVersion.intValue
+        var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+        var selectedMode by rememberSaveable { mutableIntStateOf(0) }
+        var syncSwipeOnly by remember(configVersion) { mutableStateOf(SymbolConfig.isSyncSwipeOnly(context)) }
+        var longPressDelay by remember(configVersion) { mutableLongStateOf(SymbolConfig.getLongPressDelay(context)) }
         val keyboardType = KEYBOARD_TYPES[selectedTab]
         val defaults = SymbolConfig.getDefaultSymbols(keyboardType)
         val longPressDefaults = SymbolConfig.getDefaultLongPressSymbols(keyboardType)
@@ -266,7 +304,7 @@ class MainActivity : ComponentActivity() {
         var editingValue by remember { mutableStateOf("") }
         var editingMode by remember { mutableIntStateOf(0) }
 
-        LaunchedEffect(selectedTab, selectedMode, syncSwipeOnly) {
+        LaunchedEffect(selectedTab, selectedMode, syncSwipeOnly, configVersion) {
             symbols.clear()
             longPressSymbols.clear()
             SymbolConfig.getAll(context, keyboardType).forEach { (k, v) -> symbols[k] = v }
@@ -297,6 +335,41 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(12.dp))
                 }
 
+                item {
+                    SmallTitle(text = "输入法测试")
+                    Card {
+                        var testText by rememberSaveable { mutableStateOf("") }
+                        val focus = remember { FocusRequester() }
+                        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            BasicTextField(
+                                value = testText,
+                                onValueChange = { testText = it },
+                                modifier = Modifier.fillMaxWidth().height(88.dp).focusRequester(focus)
+                                    .semantics { contentDescription = "输入法测试输入框" },
+                                textStyle = TextStyle(color = MiuixTheme.colorScheme.onSurface, fontSize = 16.sp),
+                                cursorBrush = androidx.compose.ui.graphics.SolidColor(MiuixTheme.colorScheme.primary),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                                decorationBox = { field ->
+                                    Box {
+                                        if (testText.isEmpty()) Text("点此输入，测试上滑、长按和按键布局", fontSize = 14.sp,
+                                            color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                                        field()
+                                    }
+                                }
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                ActionButton("唤起输入法", MiuixTheme.colorScheme.primary, MiuixTheme.colorScheme.onPrimary) {
+                                    focus.requestFocus()
+                                    keyboard?.show()
+                                }
+                                ActionButton("清空", Color.Transparent, MiuixTheme.colorScheme.onSurface) { testText = "" }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+
                 // 键盘切换
                 item {
                     TabRow(
@@ -310,11 +383,12 @@ class MainActivity : ComponentActivity() {
                 // 仅同步上滑模式开关
                 item {
                     Card {
-                        BasicComponent(
+                        SwitchPreference(
                             title = "仅同步上滑符号",
-                            summary = if (syncSwipeOnly) "已开启 — 长按符号不修改" else "关闭 — 可自定义长按符号",
-                            onClick = {
-                                syncSwipeOnly = !syncSwipeOnly
+                            summary = if (syncSwipeOnly) "已开启 · 长按沿用上滑符号" else "关闭 · 单独设置长按符号",
+                            checked = syncSwipeOnly,
+                            onCheckedChange = { checked ->
+                                syncSwipeOnly = checked
                                 SymbolConfig.setSyncSwipeOnly(context, syncSwipeOnly)
                                 if (syncSwipeOnly) selectedMode = 0
                             }
@@ -334,7 +408,7 @@ class MainActivity : ComponentActivity() {
                             modeLabels.forEachIndexed { index, label ->
                                 val interactionSource = remember { MutableInteractionSource() }
                                 val isPressed by interactionSource.collectIsPressedAsState()
-                                val scale by animateFloatAsState(if (isPressed) 0.95f else 1f, label = "mode")
+                                val scale = applePressScale(isPressed)
 
                                 Box(
                                     modifier = Modifier
@@ -365,9 +439,10 @@ class MainActivity : ComponentActivity() {
                 // 符号键盘
                 item {
                     if (selectedMode == 0) {
-                        SmallTitle(text = "上滑符号自定义")
+                        SmallTitle(text = "上滑符号自定义 · 确认后暂存，保存后应用")
                         Spacer(modifier = Modifier.height(8.dp))
-                        QwertyKeyboard(
+                        KeyboardPreview(
+                            keyboardType = keyboardType,
                             symbols = symbols,
                             defaults = defaults,
                             onKeyClick = { key ->
@@ -377,9 +452,10 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     } else {
-                        SmallTitle(text = "长按符号自定义")
+                        SmallTitle(text = "长按符号自定义 · 确认后暂存，保存后应用")
                         Spacer(modifier = Modifier.height(8.dp))
-                        QwertyKeyboard(
+                        KeyboardPreview(
+                            keyboardType = keyboardType,
                             symbols = longPressSymbols,
                             defaults = longPressDefaults,
                             onKeyClick = { key ->
@@ -398,8 +474,8 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                // 预设方案 — 下拉框选择
-                item {
+                // 26 键预设不改动九键配置。
+                if (keyboardType != SymbolConfig.T9) item {
                     SmallTitle(text = "预设方案")
                     Spacer(modifier = Modifier.height(8.dp))
                     var showPresetDropdown by remember { mutableStateOf(false) }
@@ -427,23 +503,7 @@ class MainActivity : ComponentActivity() {
                                         modifier = Modifier.padding(bottom = 12.dp)
                                     )
                                     SymbolConfig.PRESETS.forEachIndexed { index, preset ->
-                                        var itemVisible by remember { mutableStateOf(false) }
-                                        LaunchedEffect(showPresetDropdown) {
-                                            itemVisible = false
-                                            kotlinx.coroutines.delay(index * 60L)
-                                            itemVisible = true
-                                        }
-                                        val alpha by animateFloatAsState(
-                                            targetValue = if (itemVisible) 1f else 0f,
-                                            animationSpec = tween(durationMillis = 200),
-                                            label = "preset_alpha"
-                                        )
-                                        val offsetY by animateFloatAsState(
-                                            targetValue = if (itemVisible) 0f else 12f,
-                                            animationSpec = tween(durationMillis = 200),
-                                            label = "preset_offset"
-                                        )
-                                        Box(modifier = Modifier.graphicsLayer { this.alpha = alpha; translationY = offsetY }) {
+                                        Box {
                                             BasicComponent(
                                                 title = preset.name,
                                                 summary = presetDescs.getOrElse(index) { "" },
@@ -455,7 +515,7 @@ class MainActivity : ComponentActivity() {
                                                     longPressSymbols.clear()
                                                     SymbolConfig.getAll(context, keyboardType).forEach { (k, v) -> symbols[k] = v }
                                                     SymbolConfig.getAllLongPress(context, keyboardType).forEach { (k, v) -> longPressSymbols[k] = v }
-                                                    Toast.makeText(context, "已应用「${preset.name}」预设", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, "已暂存「${preset.name}」预设，请点击保存", Toast.LENGTH_SHORT).show()
                                                 }
                                             )
                                         }
@@ -472,8 +532,8 @@ class MainActivity : ComponentActivity() {
                     SmallTitle(text = "长按延迟")
                     Spacer(modifier = Modifier.height(8.dp))
                     Card {
-                        var sliderValue by remember { mutableStateOf(longPressDelay.toFloat()) }
-                        var inputText by remember { mutableStateOf(longPressDelay.toString()) }
+                        var sliderValue by remember(configVersion) { mutableStateOf(longPressDelay.toFloat()) }
+                        var inputText by remember(configVersion) { mutableStateOf(longPressDelay.toString()) }
 
                         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                             Row(
@@ -502,53 +562,19 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             Spacer(modifier = Modifier.height(12.dp))
-                            // 自定义 Slider
-                            var sliderWidth by remember { mutableIntStateOf(1) }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(36.dp)
-                                    .onSizeChanged { sliderWidth = it.width.coerceAtLeast(1) }
-                                    .pointerInput(Unit) {
-                                        detectDragGestures { change, _ ->
-                                            change.consume()
-                                            val width = size.width.toFloat()
-                                            val fraction = (change.position.x / width).coerceIn(0f, 1f)
-                                            val newValue = (100f + fraction * 900f).roundToLong().coerceIn(100L, 1000L)
-                                            sliderValue = newValue.toFloat()
-                                            longPressDelay = newValue
-                                            inputText = newValue.toString()
-                                            SymbolConfig.setLongPressDelay(context, longPressDelay)
-                                        }
-                                    }
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(4.dp)
-                                        .align(Alignment.Center)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(MiuixTheme.colorScheme.outline.copy(alpha = 0.3f))
-                                )
-                                val fraction = (sliderValue - 100f) / 900f
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(fraction)
-                                        .height(4.dp)
-                                        .align(Alignment.CenterStart)
-                                        .clip(RoundedCornerShape(2.dp))
-                                        .background(MiuixTheme.colorScheme.primary)
-                                )
-                                val thumbOffsetPx = fraction * sliderWidth - sliderWidth / 2f
-                                Box(
-                                    modifier = Modifier
-                                        .offset { IntOffset(thumbOffsetPx.toInt(), 0) }
-                                        .size(20.dp)
-                                        .align(Alignment.Center)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(MiuixTheme.colorScheme.primary)
-                                )
-                            }
+                            Slider(
+                                value = sliderValue,
+                                onValueChange = { value ->
+                                    val snapped = ((value / 50f).roundToLong() * 50L).coerceIn(100L, 1000L)
+                                    sliderValue = snapped.toFloat()
+                                    longPressDelay = snapped
+                                    inputText = snapped.toString()
+                                },
+                                valueRange = 100f..1000f,
+                                steps = 17,
+                                onValueChangeFinished = { SymbolConfig.setLongPressDelay(context, longPressDelay) },
+                                modifier = Modifier.fillMaxWidth().height(48.dp)
+                            )
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -640,32 +666,53 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                item {
+                    SmallTitle(text = "按键布局")
+                    Card {
+                        var swapKeys by remember(configVersion) { mutableStateOf(SymbolConfig.isSwapLanguageNumber(context)) }
+                        SwitchPreference(
+                            title = "互换中英与 123",
+                            summary = "应用于所有包含数字与中英切换键的布局，包括英文、五笔、笔画与手写，点击保存后热重载",
+                            checked = swapKeys,
+                            onCheckedChange = { checked ->
+                                swapKeys = checked
+                                SymbolConfig.setSwapLanguageNumber(context, checked)
+                            }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
                 // Logo 显示/隐藏/替换
                 item {
                     SmallTitle(text = "左上角 Logo")
                     Spacer(modifier = Modifier.height(8.dp))
                     Card {
-                        val logoModeOptions = listOf(
-                            "显示" to "保留微信输入法 Logo",
-                            "隐藏" to "隐藏 Logo，节省空间",
-                            "替换" to "使用自定义图标替换 Logo"
-                        )
-                        val currentLogoMode = remember { mutableIntStateOf(SymbolConfig.getLogoMode(this@MainActivity)) }
+                        val currentLogoMode = remember(configVersion) { mutableIntStateOf(SymbolConfig.getLogoMode(this@MainActivity)) }
+                        var replaceLogo by remember(configVersion) { mutableStateOf(currentLogoMode.intValue == SymbolConfig.LOGO_REPLACE) }
                         val logoVer = this@MainActivity.logoImageVersion.value
-                        val hasLogoImage = remember(logoVer) { mutableStateOf(SymbolConfig.getLogoImage(this@MainActivity) != null) }
+                        val hasLogoImage = remember(logoVer, configVersion) { mutableStateOf(SymbolConfig.getLogoImage(this@MainActivity) != null) }
                         Column {
-                            logoModeOptions.forEachIndexed { index, (label, desc) ->
-                                BasicComponent(
-                                    title = label,
-                                    summary = desc,
-                                    onClick = {
-                                        if (currentLogoMode.intValue != index) {
-                                            currentLogoMode.intValue = index
-                                            SymbolConfig.setLogoMode(this@MainActivity, index)
-                                        }
-                                    }
-                                )
-                            }
+                            SwitchPreference(
+                                title = "显示 Logo",
+                                summary = "关闭后只隐藏图案，按钮仍可点击",
+                                checked = currentLogoMode.intValue != SymbolConfig.LOGO_HIDE,
+                                onCheckedChange = { checked ->
+                                    currentLogoMode.intValue = if (!checked) SymbolConfig.LOGO_HIDE
+                                        else if (replaceLogo) SymbolConfig.LOGO_REPLACE else SymbolConfig.LOGO_SHOW
+                                    SymbolConfig.setLogoMode(context, currentLogoMode.intValue)
+                                }
+                            )
+                            if (currentLogoMode.intValue != SymbolConfig.LOGO_HIDE) SwitchPreference(
+                                title = "使用自定义图标",
+                                summary = "替换左上角 Logo 图案",
+                                checked = replaceLogo,
+                                onCheckedChange = { checked ->
+                                    replaceLogo = checked
+                                    currentLogoMode.intValue = if (checked) SymbolConfig.LOGO_REPLACE else SymbolConfig.LOGO_SHOW
+                                    SymbolConfig.setLogoMode(context, currentLogoMode.intValue)
+                                }
+                            )
                         }
                         // 替换模式：显示图标选择/预览/清除
                         if (currentLogoMode.intValue == SymbolConfig.LOGO_REPLACE) {
@@ -717,7 +764,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                             Text(
-                                text = "建议使用正方形透明 PNG 图标，重启键盘后生效",
+                                text = "建议使用正方形透明 PNG 图标，点击保存后生效",
                                 fontSize = 11.sp,
                                 color = MiuixTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -728,30 +775,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            // 底部保存/恢复
+            // 编辑和恢复只更改草稿；底部保存按钮统一提交并热重载。
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    ActionButton("保存", MiuixTheme.colorScheme.primary, MiuixTheme.colorScheme.onPrimary) {
-                        if (selectedMode == 0) {
-                            for (letter in SymbolConfig.LETTERS) {
-                                val key = letter.toString()
-                                val v = symbols[key] ?: ""
-                                if (v.isNotEmpty()) SymbolConfig.setSymbol(context, keyboardType, key, v)
-                                else SymbolConfig.removeSymbol(context, keyboardType, key)
-                            }
-                        } else {
-                            for (letter in SymbolConfig.LETTERS) {
-                                val key = letter.toString()
-                                val v = longPressSymbols[key] ?: ""
-                                if (v.isNotEmpty()) SymbolConfig.setLongPressSymbols(context, keyboardType, key, v)
-                                else SymbolConfig.removeLongPressSymbols(context, keyboardType, key)
-                            }
-                        }
-                        Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
-                    }
                     ActionButton("恢复默认", Color.Transparent, MiuixTheme.colorScheme.onSurface) {
                         if (selectedMode == 0) {
                             SymbolConfig.resetKeyboard(context, keyboardType)
@@ -760,7 +789,7 @@ class MainActivity : ComponentActivity() {
                             SymbolConfig.resetLongPressKeyboard(context, keyboardType)
                             longPressSymbols.clear()
                         }
-                        Toast.makeText(context, "已恢复默认", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "已恢复为默认草稿，请点击保存", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -776,13 +805,25 @@ class MainActivity : ComponentActivity() {
                 isLongPress = editingMode == 1,
                 onValueChange = { editingValue = it },
                 onConfirm = {
-                    if (editingMode == 0) symbols[key] = editingValue
-                    else longPressSymbols[key] = editingValue
+                    if (editingMode == 0) {
+                        symbols[key] = editingValue
+                        if (editingValue.isNotEmpty()) SymbolConfig.setSymbol(context, keyboardType, key, editingValue)
+                        else SymbolConfig.removeSymbol(context, keyboardType, key)
+                    } else {
+                        longPressSymbols[key] = editingValue
+                        if (editingValue.isNotEmpty()) SymbolConfig.setLongPressSymbols(context, keyboardType, key, editingValue)
+                        else SymbolConfig.removeLongPressSymbols(context, keyboardType, key)
+                    }
                     editingKey = null
                 },
                 onClear = {
-                    if (editingMode == 0) symbols.remove(key)
-                    else longPressSymbols.remove(key)
+                    if (editingMode == 0) {
+                        symbols.remove(key)
+                        SymbolConfig.removeSymbol(context, keyboardType, key)
+                    } else {
+                        longPressSymbols.remove(key)
+                        SymbolConfig.removeLongPressSymbols(context, keyboardType, key)
+                    }
                     editingValue = ""
                     editingKey = null
                 },
@@ -915,7 +956,7 @@ class MainActivity : ComponentActivity() {
                 Spacer(modifier = Modifier.height(8.dp))
                 Card {
                     BasicComponent(title = "模块名称", summary = "微信输入法上滑符号自定义")
-                    BasicComponent(title = "版本", summary = "1.1.4")
+                    BasicComponent(title = "版本", summary = "1.2.0")
                     BasicComponent(title = "作者", summary = "Rakurin Natsumi")
                     BasicComponent(
                         title = "GitHub",
@@ -942,7 +983,7 @@ class MainActivity : ComponentActivity() {
     private fun RowScope.ActionButton(text: String, bgColor: Color, textColor: Color, onClick: () -> Unit) {
         val interactionSource = remember { MutableInteractionSource() }
         val isPressed by interactionSource.collectIsPressedAsState()
-        val scale by animateFloatAsState(if (isPressed) 0.95f else 1f, label = "btn")
+        val scale = applePressScale(isPressed)
 
         Box(
             modifier = Modifier
@@ -1104,7 +1145,8 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun QwertyKeyboard(
+    private fun KeyboardPreview(
+        keyboardType: String,
         symbols: Map<String, String>,
         defaults: Map<String, String>,
         onKeyClick: (String) -> Unit
@@ -1114,14 +1156,17 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            QWERTY_ROWS.forEachIndexed { _, rowLetters ->
+            val rows = if (keyboardType == SymbolConfig.T9) SymbolConfig.keys(keyboardType).chunked(3)
+                else QWERTY_ROWS.map { row -> row.map { it.toString() } }
+            rows.forEach { rowLetters ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     rowLetters.forEach { letter ->
-                        val key = letter.toString()
+                        val key = letter
+                        val keyLabel = if (keyboardType == SymbolConfig.T9) "$key ${KeyboardKeys.T9_LABELS[key]}" else letter.uppercase()
                         val customSymbol = symbols[key]
                         val defaultSymbol = defaults[key] ?: ""
                         val displaySymbol = customSymbol?.takeIf { it.isNotEmpty() } ?: defaultSymbol
@@ -1129,12 +1174,13 @@ class MainActivity : ComponentActivity() {
 
                         val interactionSource = remember { MutableInteractionSource() }
                         val isPressed by interactionSource.collectIsPressedAsState()
-                        val scale by animateFloatAsState(if (isPressed) 0.88f else 1f, label = "key")
+                        val scale = applePressScale(isPressed)
 
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(44.dp)
+                                .height(48.dp)
+                                .semantics { contentDescription = "$keyLabel，符号 $displaySymbol" }
                                 .graphicsLayer { scaleX = scale; scaleY = scale }
                                 .clip(keyShape)
                                 .background(
@@ -1147,7 +1193,7 @@ class MainActivity : ComponentActivity() {
                                     else MiuixTheme.colorScheme.onSurface.copy(alpha = 0.08f),
                                     shape = keyShape
                                 )
-                                .clickable(interactionSource = interactionSource, indication = null) { onKeyClick(key) },
+                                .clickable(interactionSource = interactionSource, indication = null, role = Role.Button) { onKeyClick(key) },
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
@@ -1164,7 +1210,7 @@ class MainActivity : ComponentActivity() {
                                     maxLines = 1
                                 )
                                 Text(
-                                    text = letter.uppercase(),
+                                    text = keyLabel,
                                     fontSize = 13.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MiuixTheme.colorScheme.onSurface
@@ -1188,7 +1234,9 @@ class MainActivity : ComponentActivity() {
         onClear: () -> Unit,
         onDismiss: () -> Unit
     ) {
+        val focus = remember { FocusRequester() }
         Dialog(onDismissRequest = onDismiss) {
+            LaunchedEffect(letter) { focus.requestFocus() }
             Card {
                 Column(
                     modifier = Modifier.padding(24.dp),
@@ -1209,9 +1257,12 @@ class MainActivity : ComponentActivity() {
                         value = value,
                         onValueChange = onValueChange,
                         modifier = Modifier
+                            .focusRequester(focus)
                             .fillMaxWidth()
                             .background(MiuixTheme.colorScheme.surface, RoundedCornerShape(8.dp))
                             .padding(horizontal = 12.dp, vertical = 10.dp),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { onConfirm() }),
                         singleLine = !isLongPress,
                         textStyle = TextStyle(color = MiuixTheme.colorScheme.onSurface, fontSize = 14.sp),
                         cursorBrush = androidx.compose.ui.graphics.SolidColor(MiuixTheme.colorScheme.primary)

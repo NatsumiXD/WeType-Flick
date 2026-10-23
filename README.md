@@ -12,19 +12,26 @@ adb pull /sdcard/Android/data/com.tencent.wetype/files/WeTypeMarkChanger.log
 
 [HOOK点](./hook.md)
 
+当前版本采用动态定位与更新失效缓存，详细实现、REA 证据与兼容边界见 [Hook 优化与验证](./docs/HOOK-OPTIMIZATION.md)。Release 开启代码/资源裁剪，并强制检查 APK 小于 10 MB。下文的固定混淆名称用于说明历史版本，不作为当前定位依据。
+
 ## 功能
 
 | 功能 | 说明 |
 |------|------|
-| 上滑符号自定义 | 自定义26个字母上滑弹出的符号 |
+| 上滑符号自定义 | 中英文 26 键与中文九键分别配置 |
 | 长按符号自定义 | 自定义长按弹窗中的符号列表（26个字母 × 多符号） |
 | 仅同步上滑符号 | 长按弹窗使用上滑符号，无需单独配置长按 |
-| 中英文独立配置 | 分别设置中文/英文键盘的符号 |
+| 中英文独立配置 | 中文 26 键、英文 26 键及九键分别保存 |
+| 底栏互换 | 所有包含对应按键的布局交换 123 与中英键，包含英文、五笔、笔画、手写 |
+| 保存后热重载 | 修改先暂存为草稿，点击“保存并热重载”才持久化并刷新已有键盘和 Logo |
+| 升级继承配置 | 保留模块本地已保存快照，同签名覆盖升级继承，框架恢复时只发布已保存配置 |
+| 输入法测试 | 首页输入框可直接唤起当前输入法，支持清空 |
+| 原生设置入口 | 在微信输入法键盘设置面板显示“模块设置”，复用原版条目打开模块界面 |
 | 长按延迟调节 | 100ms ~ 1000ms（50ms步进），替代硬编码500ms |
 | Logo 隐藏 | 隐藏键盘左上角微信输入法 Logo |
 | Logo 替换 | 使用自定义图标替换微信输入法 Logo |
 | 内置预设 | 搜狗输入法、Gboard、豆包输入法 |
-| JSON 导入/导出 | 完整配置导入导出（v2格式，含长按符号、延迟、Logo、Logo图标） |
+| JSON 导入/导出 | 完整配置导入导出（v3 格式，含九键、布局开关，兼容 v1/v2 导入） |
 | WebDAV 同步 | 多设备配置同步 |
 
 ## 构建方法
@@ -32,9 +39,9 @@ adb pull /sdcard/Android/data/com.tencent.wetype/files/WeTypeMarkChanger.log
 ### 环境要求
 
 - Android Studio (推荐 latest stable)
-- JDK 17+
-- Gradle 8.x
-- Android SDK 36
+- JDK 21（仓库中的 daemon toolchain 配置）
+- Gradle 9.4.1（使用仓库 wrapper）
+- Android SDK 37（targetSdk 36）
 
 ### 构建步骤
 
@@ -49,6 +56,8 @@ cd WeType-Flick
 # 输出路径
 app/build/outputs/apk/debug/app-debug.apk
 ```
+
+Windows 可使用 `scripts/build-apk.ps1`（本地缓存加 `-Offline`）运行回归与 Release 构建，测试签名安装包统一覆盖 `dist/WeType-Flick.apk`。全布局与原生入口的 REA 证据见 [说明](./docs/NATIVE-SETTINGS.md)，当前的保存流程及英文布局二次重建修复见 [保存与英文修复](./docs/SAVE-AND-ENGLISH.md)。
 
 ### 安装与激活
 
